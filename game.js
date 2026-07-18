@@ -1018,6 +1018,9 @@ function doDouble(){
       $('pct'+pcActive+'s'+s).className='pc-total'+(v>21?' bust':'');
     } else {
       layoutHand($('pch'+pcActive),cur.cards,false);
+      const v=hv(cur.cards);
+      $('pct'+pcActive).textContent=v;
+      $('pct'+pcActive).className='pc-total'+(v>21?' bust':'');
     }
     updateUI();pcNext();return;
   }
@@ -1025,8 +1028,11 @@ function doDouble(){
     const h=splitHands[activeSplit];bankroll-=h.bet;h.bet*=2;h.cards.push(draw());SFX.card();renderSplit();nextSplitOrDealer();
   } else {
     const h=pcHands[0];bankroll-=h.bet;h.bet*=2;h.cards.push(draw());SFX.card();
-    const _ph0=$('pch0');if(_ph0)layoutHand(_ph0,h.cards,false);updateUI();
-    if(hv(h.cards)>21)finishRound();else dealerTurn();
+    const _ph0=$('pch0');if(_ph0)layoutHand(_ph0,h.cards,false);
+    const v=hv(h.cards);
+    const _t0=$('pct0');if(_t0){_t0.textContent=v;_t0.className='pc-total'+(v>21?' bust':'');}
+    updateUI();
+    if(v>21)finishRound();else dealerTurn();
   }
 }
 function doSurrender(){
