@@ -733,6 +733,12 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   z-index:8;
 }
 .split-col.sc-reveal .split-total{font-size:19px!important;padding:6px 16px!important;}
+.split-col.sc-dimmed{
+  transform:scale(0.76)!important;
+  opacity:.26!important;
+  transition:transform .28s,opacity .28s;
+}
+.split-col.sc-done{transform:scale(0.85);opacity:.55;}
 
 /* card sizes by hand count */
 .play-zone[data-hands="1"] .card{width:82px!important;height:114px!important;}

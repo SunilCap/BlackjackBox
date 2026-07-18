@@ -1050,14 +1050,45 @@ function finishRound(){
     const results=[];
     for(let i=0;i<2;i++){
       const r=resolveHand(splitHands[i].cards,splitHands[i].bet,true,true);
-      results.push(r.sk);showSplitResult(i,r.sk,r.outcome);
+      results.push(r);
     }
-    const wins=results.filter(r=>r==='win'||r==='bj').length;
-    const pushes=results.filter(r=>r==='push').length;
-    if(wins>0){SFX.win();showMsg('win','win');}
-    else if(pushes===results.length){SFX.push();showMsg('push','push');}
-    else{SFX.lose();showMsg('lose','lose');}
-    endCleanup();return;
+    updateUI();
+
+    function revealSplitNext(idx){
+      if(idx>=results.length){
+        for(let i=0;i<2;i++){
+          const col=$('sc'+i);
+          if(col)col.className='split-col sc-done';
+        }
+        const sks=results.map(r=>r.sk);
+        const wins=sks.filter(s=>s==='win'||s==='bj').length;
+        const pushes=sks.filter(s=>s==='push').length;
+        setTimeout(()=>{
+          if(wins>0){SFX.win();showMsg('win','win');}
+          else if(pushes===sks.length){SFX.push();showMsg('push','push');}
+          else{SFX.lose();showMsg('lose','lose');}
+          endCleanup();
+        },300);
+        return;
+      }
+
+      const r=results[idx];
+      showSplitResult(idx,r.sk,r.outcome); // zooms+labels this hand
+
+      /* dim the other hand */
+      const otherCol=$('sc'+(1-idx));
+      if(otherCol)otherCol.className='split-col sc-dimmed';
+
+      if(r.sk==='bj')SFX.bj();
+      else if(r.sk==='bust')SFX.bust();
+      else if(r.cls==='win')SFX.win();
+      else if(r.cls==='lose')SFX.lose();
+      else SFX.push();
+
+      setTimeout(()=>revealSplitNext(idx+1),1500);
+    }
+    setTimeout(()=>revealSplitNext(0),600);
+    return;
   }
 
   /* ── resolve all circle hands — collect results ── */
