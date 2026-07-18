@@ -831,7 +831,7 @@ function updateUI(){
 function buildPlayZone(){
   activeCircles=circles.map((c,i)=>c.bet>0?i:-1).filter(i=>i>=0);
   const n=activeCircles.length;
-  pcHands=activeCircles.map(i=>({cards:[],bet:circles[i].bet,done:false,result:'',cls:'',sk:''}));
+  pcHands=activeCircles.map(i=>({cards:[],bet:circles[i].bet,done:false,result:'',cls:'',sk:'',split:null,activeSub:0}));
   pcActive=0;
 
   const pz=$('playZone');
@@ -840,18 +840,37 @@ function buildPlayZone(){
   activeCircles.forEach((ci,pi)=>{
     const col=document.createElement('div');
     col.id='pc'+pi;
-    col.className='play-col '+(pi===0?'pc-active':pi<0?'pc-done':'pc-waiting');
+    col.className='play-col '+(pi===0?'pc-active':'pc-waiting');
 
+    const mainWrap=document.createElement('div');
+    mainWrap.id='pcmain'+pi;mainWrap.className='pc-main-wrap';
     const res=document.createElement('div');
     res.id='pcr'+pi;res.className='pc-res';
     const hand=document.createElement('div');
     hand.id='pch'+pi;hand.className='pc-hand';
     const tot=document.createElement('div');
     tot.id='pct'+pi;tot.className='pc-total';tot.textContent='0';
+    mainWrap.appendChild(res);mainWrap.appendChild(hand);mainWrap.appendChild(tot);
+
+    const splitWrap=document.createElement('div');
+    splitWrap.id='pcsplitwrap'+pi;splitWrap.className='pc-split-wrap hidden';
+    for(let s=0;s<2;s++){
+      const sub=document.createElement('div');
+      sub.id='pcsub'+pi+'-'+s;sub.className='pc-sub';
+      const sres=document.createElement('div');
+      sres.id='pcr'+pi+'s'+s;sres.className='pc-res';
+      const shand=document.createElement('div');
+      shand.id='pch'+pi+'s'+s;shand.className='pc-hand pc-hand-sub';
+      const stot=document.createElement('div');
+      stot.id='pct'+pi+'s'+s;stot.className='pc-total';stot.textContent='0';
+      sub.appendChild(sres);sub.appendChild(shand);sub.appendChild(stot);
+      splitWrap.appendChild(sub);
+    }
+
     const betTag=document.createElement('div');
     betTag.className='pc-bet-tag';betTag.textContent=fmt(circles[ci].bet);
 
-    col.appendChild(res);col.appendChild(hand);col.appendChild(tot);col.appendChild(betTag);
+    col.appendChild(mainWrap);col.appendChild(splitWrap);col.appendChild(betTag);
     pz.appendChild(col);
   });
 }
@@ -862,10 +881,52 @@ function pcSetActive(idx){
     const col=$('pc'+i);
     if(col)col.className='play-col '+(i===idx?'pc-active':pcHands[i].done?'pc-done':'pc-waiting');
   }
+  highlightActiveSubUI(idx);
+}
+
+/* highlight which sub-hand (of a split circle) is currently being played */
+function highlightActiveSubUI(pi){
+  const hand=pcHands[pi];
+  if(!hand||!hand.split)return;
+  for(let s=0;s<2;s++){
+    const row=$('pcsub'+pi+'-'+s);
+    if(row)row.classList.toggle('pc-sub-active',pi===pcActive&&hand.activeSub===s&&!hand.split[s].done);
+  }
+}
+
+/* renders both sub-hands after a split and swaps main->split view */
+function renderPcSplit(pi){
+  $('pcmain'+pi).classList.add('hidden');
+  $('pcsplitwrap'+pi).classList.remove('hidden');
+  const hand=pcHands[pi];
+  for(let s=0;s<2;s++){
+    const sub=hand.split[s];
+    layoutHandSized($('pch'+pi+'s'+s),sub.cards,false,'xs');
+    const v=hv(sub.cards);
+    $('pct'+pi+'s'+s).textContent=v;
+    $('pct'+pi+'s'+s).className='pc-total'+(v>21?' bust':'');
+  }
+  highlightActiveSubUI(pi);
+}
+
+/* current hand-in-play reference (main hand, or active sub-hand if split) */
+function curPcHandRef(){
+  const hand=pcHands[pcActive];
+  return hand.split?hand.split[hand.activeSub]:hand;
 }
 
 function pcNext(){
-  pcHands[pcActive].done=true;
+  const hand=pcHands[pcActive];
+  if(hand.split){
+    hand.split[hand.activeSub].done=true;
+    if(hand.activeSub===0&&!hand.split[1].done){
+      hand.activeSub=1;
+      highlightActiveSubUI(pcActive);
+      updateActions();
+      return;
+    }
+  }
+  hand.done=true;
   $('pc'+pcActive).className='play-col pc-done';
   let next=-1;
   for(let i=pcActive+1;i<activeCircles.length;i++){
@@ -880,9 +941,11 @@ function updateActions(){
   const isMH=activeCircles.length>1;
   if(isMH){
     const hand=pcHands[pcActive];
-    $('doubleBtn').disabled=bankroll<hand.bet||hand.cards.length!==2;
-    $('surrenderBtn').disabled=hand.cards.length!==2;
-    $('splitBtn').disabled=true;
+    const cur=curPcHandRef();
+    const isFirst=cur.cards.length===2;
+    $('doubleBtn').disabled=bankroll<cur.bet||!isFirst;
+    $('surrenderBtn').disabled=!isFirst||!!hand.split;
+    $('splitBtn').disabled=!isFirst||!!hand.split||!canSplit(cur.cards)||bankroll<cur.bet;
     $('hitBtn').disabled=false;$('standBtn').disabled=false;
     return;
   }
@@ -903,12 +966,21 @@ $('splitBtn').addEventListener('click',doSplit);
 function doHit(){
   if(state!=='player')return;SFX.card();
   if(activeCircles.length>1){
-    pcHands[pcActive].cards.push(draw());
-    layoutHand($('pch'+pcActive),pcHands[pcActive].cards,false);
-    const v=hv(pcHands[pcActive].cards);
-    $('pct'+pcActive).textContent=v;
-    $('pct'+pcActive).className='pc-total'+(v>21?' bust':'');
-    $('doubleBtn').disabled=true;$('surrenderBtn').disabled=true;
+    const hand=pcHands[pcActive];
+    const cur=curPcHandRef();
+    cur.cards.push(draw());
+    const v=hv(cur.cards);
+    if(hand.split){
+      const s=hand.activeSub;
+      layoutHandSized($('pch'+pcActive+'s'+s),cur.cards,false,'xs');
+      $('pct'+pcActive+'s'+s).textContent=v;
+      $('pct'+pcActive+'s'+s).className='pc-total'+(v>21?' bust':'');
+    } else {
+      layoutHand($('pch'+pcActive),cur.cards,false);
+      $('pct'+pcActive).textContent=v;
+      $('pct'+pcActive).className='pc-total'+(v>21?' bust':'');
+    }
+    $('doubleBtn').disabled=true;$('surrenderBtn').disabled=true;$('splitBtn').disabled=true;
     if(v>21)pcNext();
     return;
   }
@@ -934,9 +1006,19 @@ function doStand(){
 function doDouble(){
   if(state!=='player'||$('doubleBtn').disabled)return;SFX.chip();
   if(activeCircles.length>1){
-    const h=pcHands[pcActive];bankroll-=h.bet;h.bet*=2;
-    h.cards.push(draw());SFX.card();
-    layoutHand($('pch'+pcActive),h.cards,false);
+    const hand=pcHands[pcActive];
+    const cur=curPcHandRef();
+    bankroll-=cur.bet;cur.bet*=2;
+    cur.cards.push(draw());SFX.card();
+    if(hand.split){
+      const s=hand.activeSub;
+      layoutHandSized($('pch'+pcActive+'s'+s),cur.cards,false,'xs');
+      const v=hv(cur.cards);
+      $('pct'+pcActive+'s'+s).textContent=v;
+      $('pct'+pcActive+'s'+s).className='pc-total'+(v>21?' bust':'');
+    } else {
+      layoutHand($('pch'+pcActive),cur.cards,false);
+    }
     updateUI();pcNext();return;
   }
   if(activeSplit>=0){
@@ -951,7 +1033,7 @@ function doSurrender(){
   if(state!=='player'||$('surrenderBtn').disabled)return;
   if(activeCircles.length>1){
     const h=pcHands[pcActive];bankroll+=Math.floor(h.bet/2);
-    h.result='Surrender';h.cls='push';recordResult('push');SFX.push();updateUI();
+    h.result='Surrender';h.cls='push';h.sk='push';recordResult('push');SFX.push();updateUI();
     const re=$('pcr'+pcActive);
     if(re){re.textContent='Surrender';re.className='pc-res push show';}
     pcNext();return;
@@ -961,6 +1043,19 @@ function doSurrender(){
 }
 function doSplit(){
   if(state!=='player'||$('splitBtn').disabled)return;SFX.chip();
+  if(activeCircles.length>1){
+    const hand=pcHands[pcActive];
+    bankroll-=hand.bet;
+    hand.split=[
+      {cards:[hand.cards[0],draw()],bet:hand.bet,done:false},
+      {cards:[hand.cards[1],draw()],bet:hand.bet,done:false}
+    ];
+    hand.activeSub=0;
+    SFX.card();setTimeout(SFX.card,150);
+    renderPcSplit(pcActive);
+    updateUI();updateActions();
+    return;
+  }
   const hand=pcHands[0];
   bankroll-=hand.bet;
   splitHands=[{cards:[hand.cards[0],draw()],bet:hand.bet},{cards:[hand.cards[1],draw()],bet:hand.bet}];
@@ -1091,9 +1186,17 @@ function finishRound(){
     return;
   }
 
-  /* ── resolve all circle hands — collect results ── */
-  const resolved=pcHands.map((hand,i)=>{
-    if(hand.result==='Surrender')return{outcome:'Surrender',cls:'push',sk:'push'};
+  /* ── resolve all circle hands — collect results (split circles yield 2 items) ── */
+  const resolved=[];
+  pcHands.forEach((hand,pi)=>{
+    if(hand.split){
+      hand.split.forEach((sub,si)=>{
+        const r=resolveHand(sub.cards,sub.bet,true,true);
+        resolved.push({pi,si,outcome:r.outcome,cls:r.cls,sk:r.sk});
+      });
+      return;
+    }
+    if(hand.result==='Surrender'){resolved.push({pi,si:null,outcome:'Surrender',cls:'push',sk:'push'});return;}
     const pv=hv(hand.cards),pBJ=isBJ(hand.cards);
     let outcome,cls,sk;
     if(pv>21)        {outcome='Bust';        cls='lose';sk='bust';}
@@ -1105,7 +1208,7 @@ function finishRound(){
     else if(pv<dv)   {outcome='Lose';        cls='lose';sk='lose';}
     else             {outcome='Push';        cls='push';bankroll+=hand.bet;sk='push';}
     recordResult(sk);
-    return{outcome,cls,sk};
+    resolved.push({pi,si:null,outcome,cls,sk});
   });
 
   updateUI();
@@ -1117,6 +1220,12 @@ function finishRound(){
       for(let i=0;i<activeCircles.length;i++){
         const col=$('pc'+i);
         if(col)col.className='play-col pc-done';
+        if(pcHands[i].split){
+          for(let s=0;s<2;s++){
+            const row=$('pcsub'+i+'-'+s);
+            if(row)row.classList.remove('pc-sub-dim','pc-sub-active');
+          }
+        }
       }
       // overall banner
       const wins=resolved.filter(r=>r.sk==='win'||r.sk==='bj').length;
@@ -1133,25 +1242,37 @@ function finishRound(){
     const r=resolved[idx];
     const rvCls='rv-'+(r.sk==='bj'?'bj':r.cls==='win'?'win':r.cls==='lose'?'lose':'push');
 
-    /* zoom this hand, dim all others */
+    /* zoom this hand's column, dim all other columns */
     for(let i=0;i<activeCircles.length;i++){
       const col=$('pc'+i);
       if(!col)continue;
-      // clear all state classes
       col.className='play-col ';
-      if(i===idx){
+      if(i===r.pi){
         col.classList.add('pc-reveal',rvCls);
       } else {
         col.classList.add('pc-dimmed');
       }
     }
 
-    /* show result badge */
-    const re=$('pcr'+idx);
-    if(re){
-      re.textContent=r.outcome;
-      re.className='pc-res '+r.cls;
-      requestAnimationFrame(()=>re.classList.add('show'));
+    /* show result badge (and, if a split sub-hand, dim its sibling) */
+    if(r.si===null){
+      const re=$('pcr'+r.pi);
+      if(re){
+        re.textContent=r.outcome;
+        re.className='pc-res '+r.cls;
+        requestAnimationFrame(()=>re.classList.add('show'));
+      }
+    } else {
+      const re=$('pcr'+r.pi+'s'+r.si);
+      if(re){
+        re.textContent=r.outcome;
+        re.className='pc-res '+r.cls;
+        requestAnimationFrame(()=>re.classList.add('show'));
+      }
+      const sib=$('pcsub'+r.pi+'-'+(1-r.si));
+      if(sib)sib.classList.add('pc-sub-dim');
+      const cur=$('pcsub'+r.pi+'-'+r.si);
+      if(cur)cur.classList.remove('pc-sub-dim');
     }
 
     /* sound per hand */

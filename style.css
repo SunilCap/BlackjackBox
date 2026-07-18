@@ -677,6 +677,23 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .play-zone[data-hands="2"] .pc-hand{height:100px;}
 .play-zone[data-hands="3"] .pc-hand{height:86px;}
 
+/* ── PER-CIRCLE SPLIT (multi-hand mode) ── */
+.pc-main-wrap{display:flex;flex-direction:column;align-items:center;width:100%;}
+.pc-split-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;}
+.pc-split-wrap.hidden{display:none;}
+.pc-sub{
+  position:relative;display:flex;flex-direction:column;align-items:center;width:100%;
+  transition:opacity .28s,transform .28s;border-radius:8px;
+}
+.pc-sub.pc-sub-active::before{
+  content:"";position:absolute;inset:-4px -8px;border-radius:8px;
+  border:2px solid #d4af37;
+  box-shadow:0 0 10px rgba(212,175,55,.35);
+  pointer-events:none;z-index:0;
+}
+.pc-sub.pc-sub-dim{opacity:.3;transform:scale(0.84);}
+.pc-hand-sub{height:56px!important;}
+
 .pc-total{
   margin-top:4px;
   background:#fff;color:#111;font-weight:800;font-size:15px;
@@ -702,6 +719,8 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .pc-reveal .pc-res{font-size:18px!important;padding:6px 18px!important;}
 .pc-reveal .pc-total{font-size:18px!important;padding:6px 18px!important;}
+.pc-reveal .pc-sub .pc-res{font-size:12px!important;padding:3px 10px!important;}
+.pc-reveal .pc-sub .pc-total{font-size:13px!important;padding:3px 10px!important;}
 
 .pc-dimmed{
   transform:scale(0.76)!important;
@@ -748,5 +767,12 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .play-zone[data-hands="3"] .card{width:54px!important;height:78px!important;padding:4px 5px!important;}
 .play-zone[data-hands="3"] .card .corner{font-size:13px!important;}
 .play-zone[data-hands="3"] .card .pip{font-size:18px!important;}
+
+/* split sub-hand cards (stacked, always smaller regardless of hand count) */
+.play-zone .pc-split-wrap .card.card-xs{width:52px!important;height:74px!important;padding:3px 4px!important;}
+.play-zone .pc-split-wrap .card.card-xs .corner{font-size:11px!important;}
+.play-zone .pc-split-wrap .card.card-xs .pip{font-size:15px!important;}
+.pc-sub .pc-res{font-size:11px;padding:3px 9px;margin-bottom:2px;}
+.pc-sub .pc-total{font-size:12px;padding:2px 9px;margin-top:2px;}
 
 .hidden{display:none!important;}
