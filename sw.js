@@ -2,16 +2,18 @@
  * 21 Table — Blackjack  /  Service Worker
  * Version: 1.0.0
  *
- * Place sw.js in the SAME directory as index.html on your server.
- * Update CACHE_VERSION when you deploy a new version so users get fresh content.
+ * Place sw.js in the SAME directory as index.html, style.css, game.js, and manifest.json.
+ * Bump CACHE_VERSION whenever you deploy a new version so returning users get fresh content.
  */
 
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v1.0.1';
 const CACHE_NAME    = `blackjack-${CACHE_VERSION}`;
 
 const PRECACHE = [
   './',
   './index.html',
+  './style.css',
+  './game.js',
   './manifest.json',
 ];
 
