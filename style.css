@@ -98,6 +98,12 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   margin-bottom:16px;
   transition:all .35s;
 }
+/* real city banner image (sprite asset, replaces city-icon+city-badge combo) */
+.city-banner-img{
+  max-width:320px;width:82%;height:auto;
+  margin-bottom:24px;
+  filter:drop-shadow(0 4px 18px rgba(0,0,0,.55));
+}
 /* table info box */
 .table-info{
   background:rgba(0,0,0,.7);border-radius:10px;
@@ -183,6 +189,15 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   font-size:22px;cursor:pointer;flex:none;
 }
 .icon-btn:active{background:rgba(0,0,0,.65);}
+
+/* ── image-based icon buttons (sprite assets) ── */
+.lb-btn.has-img,.icon-btn.has-img,.fs-back.has-img,.add-btn.has-img{
+  background:transparent;border:none;padding:0;overflow:hidden;
+}
+.lb-btn.has-img img,.icon-btn.has-img img,.fs-back.has-img img,.add-btn.has-img img{
+  width:100%;height:100%;object-fit:contain;border-radius:50%;pointer-events:none;
+}
+.add-btn.has-img{background:transparent;}
 .balance-pill{
   flex:1;display:flex;align-items:center;
   background:rgba(0,0,0,.48);border:1.5px solid rgba(255,255,255,.16);
@@ -247,11 +262,11 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .card.show{opacity:1;transform:translateY(0) scale(1);}
 .corner{font-size:20px;line-height:1.05;}
+.corner .suit-ic{width:14px;height:14px;object-fit:contain;vertical-align:-2px;}
 .bot{align-self:flex-end;transform:rotate(180deg);}
-.pip{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:34px;}
+.pip{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;object-fit:contain;}
 .card.red{color:#c0273b;}.card.black{color:#111;}
-.card.back{background:repeating-linear-gradient(45deg,#1a58a0 0 5px,#2568b8 5px 10px);border:5px solid #123e74;}
-.card.back::after{content:"";position:absolute;inset:8px;border:1.5px solid rgba(255,255,255,.28);border-radius:5px;}
+.card.back{background:url(img/card-back.png) center/cover no-repeat;border:none;}
 
 /* ── SPLIT ── */
 .split-row{display:flex;gap:8px;position:relative;}
@@ -763,15 +778,18 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .play-zone[data-hands="1"] .card{width:82px!important;height:114px!important;}
 .play-zone[data-hands="2"] .card{width:68px!important;height:96px!important;}
 .play-zone[data-hands="2"] .card .corner{font-size:16px!important;}
-.play-zone[data-hands="2"] .card .pip{font-size:24px!important;}
+.play-zone[data-hands="2"] .card .corner .suit-ic{width:11px!important;height:11px!important;}
+.play-zone[data-hands="2"] .card .pip{width:24px!important;height:24px!important;}
 .play-zone[data-hands="3"] .card{width:54px!important;height:78px!important;padding:4px 5px!important;}
 .play-zone[data-hands="3"] .card .corner{font-size:13px!important;}
-.play-zone[data-hands="3"] .card .pip{font-size:18px!important;}
+.play-zone[data-hands="3"] .card .corner .suit-ic{width:9px!important;height:9px!important;}
+.play-zone[data-hands="3"] .card .pip{width:18px!important;height:18px!important;}
 
 /* split sub-hand cards (stacked, always smaller regardless of hand count) */
 .play-zone .pc-split-wrap .card.card-xs{width:52px!important;height:74px!important;padding:3px 4px!important;}
 .play-zone .pc-split-wrap .card.card-xs .corner{font-size:11px!important;}
-.play-zone .pc-split-wrap .card.card-xs .pip{font-size:15px!important;}
+.play-zone .pc-split-wrap .card.card-xs .corner .suit-ic{width:8px!important;height:8px!important;}
+.play-zone .pc-split-wrap .card.card-xs .pip{width:15px!important;height:15px!important;}
 .pc-sub .pc-res{font-size:11px;padding:3px 9px;margin-bottom:2px;}
 .pc-sub .pc-total{font-size:12px;padding:2px 9px;margin-top:2px;}
 

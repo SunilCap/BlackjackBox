@@ -110,10 +110,10 @@
   <div class="version-badge" id="versionBadge">v1.0.0</div>
 
   <div class="lobby-bottom">
-    <button class="lb-btn">🎵</button>
-    <button class="lb-btn" id="storeBtn">🛒</button>
-    <button class="lb-btn" id="lobbyStatsBtn">📊</button>
-    <button class="lb-btn" id="rulesBtn">❓</button>
+    <button class="lb-btn has-img" id="musicBtn"><img src="img/icon-music.png" alt="Music"></button>
+    <button class="lb-btn has-img" id="storeBtn"><img src="img/icon-cart.png" alt="Store"></button>
+    <button class="lb-btn has-img" id="lobbyStatsBtn"><img src="img/icon-chart.png" alt="Stats"></button>
+    <button class="lb-btn has-img" id="rulesBtn"><img src="img/icon-question.png" alt="Rules"></button>
     <button class="lb-btn" id="langBtn" style="font-size:15px;font-weight:800;">EN</button>
   </div>
 
@@ -193,14 +193,14 @@
 <!-- ══ GAME ══ -->
 <div id="game">
   <div class="topbar">
-    <button class="icon-btn" id="backBtn">‹</button>
+    <button class="icon-btn has-img" id="backBtn"><img src="img/icon-back.png" alt="Back"></button>
     <div class="balance-pill">
-      <div class="coin"></div>
+      <img class="coin" src="img/icon-chip-bankroll.png" alt="">
       <div class="bal-amt" id="balAmt">$1,000</div>
-      <button class="add-btn" id="addBtn">+</button>
+      <button class="add-btn has-img" id="addBtn"><img src="img/icon-plus.png" alt="+"></button>
     </div>
     <div class="stats-wrap">
-      <button class="icon-btn" id="statsToggle">📊</button>
+      <button class="icon-btn has-img" id="statsToggle"><img src="img/icon-chart.png" alt="Stats"></button>
     </div>
   </div>
 
@@ -325,7 +325,7 @@
 <!-- ══ STATS OVERLAY ══ -->
 <div class="fs-overlay" id="statsOverlay">
   <div class="fs-topbar">
-    <button class="fs-back" id="statsBack">‹</button>
+    <button class="fs-back has-img" id="statsBack"><img src="img/icon-back.png" alt="Back"></button>
     <div class="fs-title" id="sStatTitle">Session Stats</div>
   </div>
   <div class="fs-body">
@@ -351,7 +351,7 @@
 <!-- ══ STORE OVERLAY ══ -->
 <div class="fs-overlay" id="storeOverlay">
   <div class="fs-topbar">
-    <button class="fs-back" id="storeBack">‹</button>
+    <button class="fs-back has-img" id="storeBack"><img src="img/icon-back.png" alt="Back"></button>
     <div class="fs-title" id="storeTitle">Store</div>
   </div>
   <div class="fs-body">
@@ -441,7 +441,7 @@
 <!-- ══ LANGUAGE OVERLAY ══ -->
 <div class="fs-overlay" id="langOverlay">
   <div class="fs-topbar">
-    <button class="fs-back" id="langBack">‹</button>
+    <button class="fs-back has-img" id="langBack"><img src="img/icon-back.png" alt="Back"></button>
     <div class="fs-title" id="langTitle">Language</div>
   </div>
   <div class="fs-body">

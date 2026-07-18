@@ -219,9 +219,18 @@ let currentTableIdx=0,activeTable=TABLES[0];
 
 const $=id=>document.getElementById(id);
 const SUITS=[{sym:"♠",c:"black"},{sym:"♥",c:"red"},{sym:"♦",c:"red"},{sym:"♣",c:"black"}];
+const SUIT_IMG={"♠":"img/suit-spade.png","♥":"img/suit-heart.png","♦":"img/suit-diamond.png","♣":"img/suit-club.png"};
 const RANKS=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 
 /* ── LOBBY ── */
+const CITY_IMG={
+  vegas:'img/city-lasvegas.png',
+  paris:'img/city-paris.png',
+  singapore:'img/city-singapore.png',
+  melbourne:'img/city-melbourne.png'
+  // monaco: no matching sprite asset, keeps the original CSS-drawn skyline below
+};
+
 function renderLobby(){
   const tbl=TABLES[currentTableIdx];
   const bg=$('lobbyBg');
@@ -232,9 +241,13 @@ function renderLobby(){
   // chip values for this table
   const chips=getTableChips(tbl);
 
+  const cityImg=CITY_IMG[tbl.id];
   $('tableCard').innerHTML=`
-    <div class="city-icon ${tbl.cls}" style="color:${neonColor(tbl.cls)}">${tbl.svg}</div>
-    <div class="city-badge ${tbl.cls}" style="color:${neonColor(tbl.cls)};border-color:${neonColor(tbl.cls)};box-shadow:0 0 18px ${neonColor(tbl.cls)},inset 0 0 12px rgba(255,255,255,.06)">${tbl.name}</div>
+    ${cityImg
+      ?`<img class="city-banner-img" src="${cityImg}" alt="${tbl.name}">`
+      :`<div class="city-icon ${tbl.cls}" style="color:${neonColor(tbl.cls)}">${tbl.svg}</div>
+        <div class="city-badge ${tbl.cls}" style="color:${neonColor(tbl.cls)};border-color:${neonColor(tbl.cls)};box-shadow:0 0 18px ${neonColor(tbl.cls)},inset 0 0 12px rgba(255,255,255,.06)">${tbl.name}</div>`
+    }
     <div class="table-info">
       ${tbl.info.split('\n').map(l=>`<p>${l}</p>`).join('')}
       ${locked?`<p class="info-locked">⚠ Need ${fmt(tbl.minStack)} to enter</p>`:''}
@@ -310,8 +323,16 @@ $('backBtn').addEventListener('click',()=>{
 
 /* ── AUDIO ── */
 let actx;
+let soundMuted=false;
 function ac(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();return actx;}
-function tone(f,type,dur,vol,del){try{const a=ac(),g=a.createGain(),o=a.createOscillator();o.type=type;o.frequency.value=f;const t=a.currentTime+(del||0);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+dur+.05);}catch(e){}}
+function tone(f,type,dur,vol,del){if(soundMuted)return;try{const a=ac(),g=a.createGain(),o=a.createOscillator();o.type=type;o.frequency.value=f;const t=a.currentTime+(del||0);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+dur+.05);}catch(e){}}
+const _musicBtn=$('musicBtn');
+if(_musicBtn){
+  _musicBtn.addEventListener('click',()=>{
+    soundMuted=!soundMuted;
+    _musicBtn.querySelector('img').src=soundMuted?'img/icon-mute.png':'img/icon-music.png';
+  });
+}
 function nBlip(dur,vol){try{const a=ac(),buf=a.createBuffer(1,a.sampleRate*.1,a.sampleRate),g=a.createGain();const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*.25;const src=a.createBufferSource();src.buffer=buf;src.connect(g);g.connect(a.destination);g.gain.setValueAtTime(vol,a.currentTime);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+dur);src.start();src.stop(a.currentTime+dur+.05);}catch(e){}}
 const SFX={
   card:()=>{nBlip(.09,.65);tone(860,'sine',.07,.1);},
@@ -352,7 +373,7 @@ function layoutHand(container,cards,fdLast){
     const fd=fdLast&&i===n-1;
     const cd=document.createElement('div');
     cd.className="card "+(fd?"back":card.col);
-    if(!fd)cd.innerHTML=`<div class="corner">${card.rank}<br>${card.suit}</div><div class="pip">${card.suit}</div><div class="corner bot">${card.rank}<br>${card.suit}</div>`;
+    if(!fd)cd.innerHTML=`<div class="corner">${card.rank}<br><img class="suit-ic" src="${SUIT_IMG[card.suit]}"></div><img class="pip" src="${SUIT_IMG[card.suit]}"><div class="corner bot">${card.rank}<br><img class="suit-ic" src="${SUIT_IMG[card.suit]}"></div>`;
     const lx=cw/2-40-totalSpan/2+stride*i;
     cd.style.left=lx+'px';
     cd.style.top=(i%2===0?0:4)+'px';
@@ -1098,7 +1119,7 @@ function layoutHandSized(container,cards,fdLast,sizeClass){
     const fd=fdLast&&i===n-1;
     const cd=document.createElement('div');
     cd.className='card '+(fd?'back':card.col)+(sizeClass?' card-'+sizeClass:'');
-    if(!fd)cd.innerHTML=`<div class="corner">${card.rank}<br>${card.suit}</div><div class="pip">${card.suit}</div><div class="corner bot">${card.rank}<br>${card.suit}</div>`;
+    if(!fd)cd.innerHTML=`<div class="corner">${card.rank}<br><img class="suit-ic" src="${SUIT_IMG[card.suit]}"></div><img class="pip" src="${SUIT_IMG[card.suit]}"><div class="corner bot">${card.rank}<br><img class="suit-ic" src="${SUIT_IMG[card.suit]}"></div>`;
     const lx=cw/2-W/2-totalSpan/2+stride*i;
     cd.style.left=lx+'px';
     cd.style.top=(i%2===0?0:4)+'px';
