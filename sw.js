@@ -1,12 +1,12 @@
 /**
  * 21 Table — Blackjack  /  Service Worker
- * Version: 1.0.0
+ * Version: 1.0.2
  *
  * Place sw.js in the SAME directory as index.html, style.css, game.js, and manifest.json.
  * Bump CACHE_VERSION whenever you deploy a new version so returning users get fresh content.
  */
 
-const CACHE_VERSION = 'v1.0.1';
+const CACHE_VERSION = 'v1.0.2';
 const CACHE_NAME    = `blackjack-${CACHE_VERSION}`;
 
 const PRECACHE = [
@@ -15,6 +15,23 @@ const PRECACHE = [
   './style.css',
   './game.js',
   './manifest.json',
+  './img/card-back.png',
+  './img/city-lasvegas.png',
+  './img/city-paris.png',
+  './img/city-singapore.png',
+  './img/city-melbourne.png',
+  './img/icon-music.png',
+  './img/icon-mute.png',
+  './img/icon-cart.png',
+  './img/icon-chart.png',
+  './img/icon-question.png',
+  './img/icon-back.png',
+  './img/icon-chip-bankroll.png',
+  './img/icon-plus.png',
+  './img/suit-heart.png',
+  './img/suit-club.png',
+  './img/suit-diamond.png',
+  './img/suit-spade.png',
 ];
 
 self.addEventListener('install', event => {

@@ -36,23 +36,39 @@
 
 <!--
   ════════════════════════════════════════
-  GOOGLE ADSENSE — SETUP INSTRUCTIONS
+  MONETIZATION — AD PLACEMENT API SETUP
   ════════════════════════════════════════
-  1. Sign up at https://www.google.com/adsense
-  2. Add your site URL (e.g. yourname.github.io/21-table-blackjack)
-  3. Replace YOUR_PUBLISHER_ID below with your ca-pub-XXXXXXXXXXXXXXXX
-  4. Uncomment the 3 script lines below
-  5. AdSense Auto Ads will handle placement automatically
-     OR use the manual ad slots defined in the lobby HTML below
+  This uses Google's "Ad Placement API" (H5 Games Ads), which serves
+  interstitial + rewarded ads on BOTH the web (via AdSense) and inside
+  an Android WebView/TWA (via AdMob) using the SAME adBreak() calls.
 
-  IMPORTANT: AdSense requires a privacy policy page.
+  It's an application-based program — apply here before ads will serve:
+  https://developers.google.com/ad-placement/docs/signup
+
+  SETUP:
+  1. Get an AdSense publisher ID (ca-pub-XXXXXXXXXXXXXXXX) — replace
+     YOUR_PUBLISHER_ID below.
+  2. Once you have an Android app, create AdMob interstitial + rewarded
+     ad units and replace YOUR_ADMOB_INTERSTITIAL_SLOT /
+     YOUR_ADMOB_REWARDED_SLOT below (the data-admob-* attributes are
+     ignored on web, so it's safe to leave them in for both platforms).
+  3. Apply for H5 Games Ads access (link above). Ads won't show until
+     approved — everything below is functional once you are.
+
+  IMPORTANT: AdSense/AdMob requires a privacy policy page.
   Add a link in your README or a /privacy.html file.
   ════════════════════════════════════════
 -->
-<!-- STEP 1: Uncomment and replace YOUR_PUBLISHER_ID -->
-<!--
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_PUBLISHER_ID" crossorigin="anonymous"></script>
--->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_PUBLISHER_ID"
+  data-ad-client="ca-pub-YOUR_PUBLISHER_ID"
+  data-admob-interstitial-slot="YOUR_ADMOB_INTERSTITIAL_SLOT"
+  data-admob-rewarded-slot="YOUR_ADMOB_REWARDED_SLOT"
+  crossorigin="anonymous"></script>
+<script>
+  window.adsbygoogle = window.adsbygoogle || [];
+  var adBreak = function(o){ adsbygoogle.push(o); };
+  var adConfig = function(o){ adsbygoogle.push(o); };
+</script>
 
 <!-- PWA Manifest — points to manifest.json in same directory -->
 <link rel="manifest" href="./manifest.json">
@@ -65,6 +81,18 @@
 <body>
 <div id="scaler">
 <div id="app">
+
+<!-- ══ LOADING SCREEN ══ -->
+<div id="loadingScreen">
+  <div class="ls-cards">
+    <img class="ls-card ls-card-l" src="img/card-back.png" alt="">
+    <img class="ls-foil" src="img/foil-pack.png" alt="">
+    <img class="ls-card ls-card-r" src="img/card-back.png" alt="">
+  </div>
+  <div class="ls-title">21<span>TABLE</span></div>
+  <div class="ls-track"><div class="ls-fill" id="lsFill"></div></div>
+  <div class="ls-pct" id="lsPct">0%</div>
+</div>
 
 <!-- ══ LOBBY ══ -->
 <div id="lobby">
@@ -107,7 +135,7 @@
   <button class="pwa-install-btn" id="pwaInstallBtn">
     <span>📲</span> Add to Home Screen
   </button>
-  <div class="version-badge" id="versionBadge">v1.0.0</div>
+  <div class="version-badge" id="versionBadge">v1.0.2</div>
 
   <div class="lobby-bottom">
     <button class="lb-btn has-img" id="musicBtn"><img src="img/icon-music.png" alt="Music"></button>

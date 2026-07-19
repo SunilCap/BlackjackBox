@@ -253,7 +253,12 @@ function renderLobby(){
       ${locked?`<p class="info-locked">⚠ Need ${fmt(tbl.minStack)} to enter</p>`:''}
     </div>
     <button class="play-btn${locked?' locked':''}" id="playBtn">${locked?t('locked'):t('play')}</button>
+    ${locked?`<button class="watch-ad-btn" id="watchAdBtn">🎬 Watch Ad for ${fmt(500)}</button>`:''}
   `;
+  if(locked){
+    const wab=$('watchAdBtn');
+    if(wab)wab.addEventListener('click',showRewardedAd);
+  }
 
   // dots
   const dotsEl=$('dots');
@@ -319,7 +324,32 @@ $('backBtn').addEventListener('click',()=>{
   $('lobby').classList.remove('hide');
   $('lobbyBal').textContent=fmt(bankroll);
   renderLobby();
+  // natural break point — let the Ad Placement API decide whether/how often to actually show one
+  if(typeof adBreak==='function'){
+    adBreak({
+      type:'next',
+      name:'return_to_lobby',
+    });
+  }
 });
+
+/* ── REWARDED AD: bonus chips when locked out of a table ── */
+function showRewardedAd(){
+  if(typeof adBreak!=='function'){showToast('Ads not configured yet');return;}
+  adBreak({
+    type:'reward',
+    name:'bonus_chips',
+    beforeReward:(showAdFn)=>{ showAdFn(); },
+    adViewed:()=>{
+      bankroll+=500;
+      $('lobbyBal').textContent=fmt(bankroll);
+      showToast('+'+fmt(500)+' chips!');
+      renderLobby();
+    },
+    adDismissed:()=>{ showToast('Watch the full ad to earn chips'); },
+    adBreakDone:()=>{},
+  });
+}
 
 /* ── AUDIO ── */
 let actx;
@@ -331,6 +361,7 @@ if(_musicBtn){
   _musicBtn.addEventListener('click',()=>{
     soundMuted=!soundMuted;
     _musicBtn.querySelector('img').src=soundMuted?'img/icon-mute.png':'img/icon-music.png';
+    if(typeof adConfig==='function')adConfig({sound:soundMuted?'off':'on'});
   });
 }
 function nBlip(dur,vol){try{const a=ac(),buf=a.createBuffer(1,a.sampleRate*.1,a.sampleRate),g=a.createGain();const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*.25;const src=a.createBufferSource();src.buffer=buf;src.connect(g);g.connect(a.destination);g.gain.setValueAtTime(vol,a.currentTime);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+dur);src.start();src.stop(a.currentTime+dur+.05);}catch(e){}}
@@ -1663,7 +1694,43 @@ $('pwaInstallBtn').addEventListener('click', async () => {
   deferredPrompt = null;
 });
 
+/* ── LOADING SCREEN: preload real assets, then reveal ── */
+(function preloadAssets(){
+  const urls=[
+    'img/card-back.png','img/foil-pack.png',
+    'img/city-lasvegas.png','img/city-paris.png','img/city-singapore.png','img/city-melbourne.png',
+    'img/icon-music.png','img/icon-mute.png','img/icon-cart.png','img/icon-chart.png',
+    'img/icon-question.png','img/icon-back.png','img/icon-chip-bankroll.png','img/icon-plus.png',
+    'img/suit-heart.png','img/suit-club.png','img/suit-diamond.png','img/suit-spade.png'
+  ];
+  const fill=$('lsFill'),pct=$('lsPct'),screen=$('loadingScreen');
+  const total=urls.length;
+  let loaded=0;
+  function tick(){
+    loaded++;
+    const p=Math.round(loaded/total*100);
+    if(fill)fill.style.width=p+'%';
+    if(pct)pct.textContent=p+'%';
+    if(loaded>=total){
+      setTimeout(()=>{if(screen)screen.classList.add('hide');},250);
+    }
+  }
+  if(total===0){if(screen)screen.classList.add('hide');return;}
+  urls.forEach(src=>{
+    const img=new Image();
+    img.onload=tick;
+    img.onerror=tick; // never let a missing/blocked asset hang the app
+    img.src=src;
+  });
+})();
+
 /* ── INIT ── */
+if(typeof adConfig==='function'){
+  adConfig({
+    preloadAdBreaks:'on',
+    sound: soundMuted?'off':'on',
+  });
+}
 shoe=buildShoe(4);
 renderLobby();
 resetTable();

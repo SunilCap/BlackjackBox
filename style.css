@@ -7,6 +7,45 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 #app{width:390px;height:844px;position:relative;overflow:hidden;user-select:none;}
 
 /* ══════════════════════════════════════════
+   LOADING SCREEN
+══════════════════════════════════════════ */
+#loadingScreen{
+  position:absolute;inset:0;z-index:500;
+  background:radial-gradient(ellipse at 50% 30%,#0f3d28 0%,#082418 55%,#04140d 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity .5s,transform .5s;
+}
+#loadingScreen.hide{opacity:0;transform:scale(1.04);pointer-events:none;}
+
+.ls-cards{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  margin-bottom:22px;
+}
+.ls-card{width:78px;height:auto;filter:drop-shadow(0 8px 20px rgba(0,0,0,.6));}
+.ls-card-l{transform:rotate(-14deg) translateY(6px);animation:lsFloat 2.6s ease-in-out infinite;}
+.ls-card-r{transform:rotate(14deg) translateY(6px);animation:lsFloat 2.6s ease-in-out infinite .3s;}
+.ls-foil{width:92px;height:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.65));animation:lsFloat 2.6s ease-in-out infinite .15s;}
+@keyframes lsFloat{0%,100%{translate:0 0;}50%{translate:0 -8px;}}
+
+.ls-title{
+  font-family:Georgia,serif;font-weight:900;font-size:44px;color:#f4ecd8;
+  letter-spacing:2px;margin-bottom:26px;
+  text-shadow:0 0 18px rgba(212,175,55,.5),0 4px 10px rgba(0,0,0,.6);
+}
+.ls-title span{display:block;font-family:'Segoe UI',Arial,sans-serif;font-weight:800;font-size:15px;letter-spacing:8px;color:#d4af37;text-align:center;margin-top:2px;}
+
+.ls-track{
+  width:200px;height:8px;border-radius:5px;background:rgba(255,255,255,.12);
+  overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.5);
+}
+.ls-fill{
+  width:0%;height:100%;border-radius:5px;
+  background:linear-gradient(90deg,#d4af37,#ffe07a);
+  transition:width .25s ease-out;
+}
+.ls-pct{margin-top:10px;font-size:13px;color:rgba(244,236,216,.65);letter-spacing:1px;font-weight:600;}
+
+/* ══════════════════════════════════════════
    LOBBY SCREEN
 ══════════════════════════════════════════ */
 #lobby{
@@ -122,6 +161,13 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .play-btn:active{transform:scale(.96);}
 .play-btn.locked{background:linear-gradient(175deg,#666,#444);box-shadow:none;cursor:default;}
+
+.watch-ad-btn{
+  display:block;margin:14px auto 0;padding:11px 28px;border-radius:26px;border:1.5px solid rgba(212,175,55,.5);
+  background:rgba(212,175,55,.12);color:#ffd76b;font-weight:700;font-size:15px;cursor:pointer;
+  transition:transform .08s,background .2s;
+}
+.watch-ad-btn:active{transform:scale(.96);background:rgba(212,175,55,.22);}
 
 /* carousel nav arrows */
 .arrow{
@@ -728,10 +774,14 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 
 /* ── RESULT REVEAL STATES ── */
 .pc-reveal{
-  transform:scale(1.22)!important;
+  transform:scale(1.13)!important;
+  transform-origin:center bottom;
   z-index:10;
   transition:transform .32s cubic-bezier(.18,.9,.2,1.15),opacity .25s;
 }
+/* keep growth inward on edge columns so it can't push past the screen edge */
+.play-zone .play-col.pc-reveal:first-child{transform-origin:left bottom!important;}
+.play-zone .play-col.pc-reveal:last-child{transform-origin:right bottom!important;}
 .pc-reveal .pc-res{font-size:18px!important;padding:6px 18px!important;}
 .pc-reveal .pc-total{font-size:18px!important;padding:6px 18px!important;}
 .pc-reveal .pc-sub .pc-res{font-size:12px!important;padding:3px 10px!important;}
@@ -754,18 +804,20 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .pc-res.push{background:rgba(180,190,184,.15);color:#cdd5d1;border:1px solid rgba(180,190,184,.3);}
 
 /* ── DEALER HAND RESULT HIGHLIGHT ── */
-.hand-zone{transition:transform .32s cubic-bezier(.18,.9,.2,1.15);}
+.hand-zone{transition:transform .32s cubic-bezier(.18,.9,.2,1.15);transform-origin:center top;}
 .hand-zone.hz-reveal{
-  transform:scale(1.16);
+  transform:scale(1.1);
   z-index:8;
 }
 
 /* ── SPLIT HAND RESULT HIGHLIGHT ── */
-.split-col{transition:transform .32s cubic-bezier(.18,.9,.2,1.15);}
+.split-col{transition:transform .32s cubic-bezier(.18,.9,.2,1.15);transform-origin:center bottom;}
 .split-col.sc-reveal{
-  transform:scale(1.14);
+  transform:scale(1.1);
   z-index:8;
 }
+.split-row .split-col.sc-reveal:first-child{transform-origin:left bottom!important;}
+.split-row .split-col.sc-reveal:last-child{transform-origin:right bottom!important;}
 .split-col.sc-reveal .split-total{font-size:19px!important;padding:6px 16px!important;}
 .split-col.sc-dimmed{
   transform:scale(0.76)!important;
