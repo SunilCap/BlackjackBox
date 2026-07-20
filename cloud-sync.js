@@ -33,6 +33,13 @@ let currentUid = null;
 let latestUserDoc = { bankroll: 1000, removeAds: false, vipUntil: 0, unlockedTables: [] };
 let onUpdateCallback = null;
 
+// Resolves once anonymous sign-in has actually completed. Buying/purchase
+// calls MUST await this first — clicking Buy right after page load, before
+// sign-in finishes, was causing "Must be signed in" errors server-side even
+// though the button was already clickable.
+let resolveAuthReady;
+const authReady = new Promise(resolve => { resolveAuthReady = resolve; });
+
 /**
  * Call once at startup. Signs the player in anonymously (no signup friction —
  * this ties their save to this browser/device; upgrading to a real account
@@ -51,6 +58,7 @@ function init(onUpdate) {
       return;
     }
     currentUid = user.uid;
+    resolveAuthReady(); // safe to call more than once — a Promise only ever resolves the first time
 
     // make sure a user doc exists (first run)
     try {
@@ -80,6 +88,7 @@ function getState() {
  * @param {string} priceId    the matching Stripe Price ID (web only — ignored on Android)
  */
 async function buyOnWeb(productId, priceId) {
+  await authReady; // don't call the server until sign-in has actually finished
   const createCheckoutSession = httpsCallable(functions, "createCheckoutSession");
   const result = await createCheckoutSession({ productId, priceId });
   window.location.href = result.data.url; // redirect to Stripe Checkout
@@ -109,6 +118,7 @@ async function isPlayBillingAvailable() {
 }
 
 async function buyOnAndroid(productId, isSubscription = false) {
+  await authReady;
   const service = await window.getDigitalGoodsService('https://play.google.com/billing');
   const details = (await service.getDetails([productId]))[0];
   if (!details) throw new Error(`Product ${productId} not found in Play Console catalog`);
