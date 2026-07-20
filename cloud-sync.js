@@ -96,7 +96,16 @@ async function buyOnWeb(productId, priceId) {
  * @param {boolean} isSubscription
  */
 async function isPlayBillingAvailable() {
-  return 'getDigitalGoodsService' in window;
+  if (!('getDigitalGoodsService' in window)) return false;
+  try {
+    // The function can exist on desktop Chrome/Edge but throws when actually
+    // called outside a real TWA install — so we have to try it, not just
+    // check for its presence.
+    await window.getDigitalGoodsService('https://play.google.com/billing');
+    return true;
+  } catch (err) {
+    return false;
+  }
 }
 
 async function buyOnAndroid(productId, isSubscription = false) {
