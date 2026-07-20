@@ -213,6 +213,37 @@ const TABLES=[
 
 /* ── STATE ── */
 let bankroll=1000,startBR=1000,shoe=[],state="betting";
+let cloudRemoveAds=false,cloudVipUntil=0,cloudCoinsMerged=0;
+
+window.addEventListener('cloudsync-ready',()=>{
+  CloudSync.init((cloudState)=>{
+    // Merge any NEW purchased coins since we last merged (purchases only —
+    // regular hand wins/losses stay local, see the earlier chat note on this).
+    const newlyPurchased=(cloudState.bankroll||0)-cloudCoinsMerged;
+    if(newlyPurchased>0){
+      bankroll+=newlyPurchased;
+      cloudCoinsMerged=cloudState.bankroll;
+      updateUI();
+      if(cloudCoinsMerged>1000){ // don't toast on the very first/default load
+        showToast('+'+fmt(newlyPurchased)+' from your purchase!');
+      }
+    }
+    cloudRemoveAds=!!cloudState.removeAds;
+    cloudVipUntil=cloudState.vipUntil||0;
+  });
+});
+
+// returning from Stripe Checkout — just clean the URL and show a friendly message;
+// the actual coin grant happens above once Firestore updates (usually within a couple seconds)
+(function handleCheckoutReturn(){
+  const params=new URLSearchParams(window.location.search);
+  const purchase=params.get('purchase');
+  if(purchase){
+    history.replaceState({},'',window.location.pathname);
+    if(purchase==='success')setTimeout(()=>showToast('Payment received — crediting your account…'),500);
+    else if(purchase==='cancelled')setTimeout(()=>showToast('Purchase cancelled'),500);
+  }
+})();
 let dealerCards=[],splitHands=null,activeSplit=-1,insuranceBet=0;
 let stats={hands:0,won:0,lost:0,push:0,bj:0,bust:0,curStreak:0,bestStreak:0};
 let currentTableIdx=0,activeTable=TABLES[0];
@@ -325,7 +356,9 @@ $('backBtn').addEventListener('click',()=>{
   $('lobbyBal').textContent=fmt(bankroll);
   renderLobby();
   // natural break point — let the Ad Placement API decide whether/how often to actually show one
-  if(typeof adBreak==='function'){
+  // (unless the player bought Remove Ads or has active VIP — both include ad-free play)
+  const adsRemoved=cloudRemoveAds||(cloudVipUntil>Date.now());
+  if(!adsRemoved&&typeof adBreak==='function'){
     adBreak({
       type:'next',
       name:'return_to_lobby',
@@ -541,9 +574,41 @@ $('statsResetBtn').addEventListener('click',()=>{
 /* ── STORE OVERLAY ── */
 $('storeBtn').addEventListener('click',()=>$('storeOverlay').classList.add('show'));
 $('storeBack').addEventListener('click',()=>$('storeOverlay').classList.remove('show'));
-document.querySelectorAll('.iap-buy,.sf-price,.iap-restore').forEach(btn=>{
-  btn.addEventListener('click',()=>showToast('This is a demo — no real purchase made'));
+
+document.querySelectorAll('.iap-buy,.sf-price').forEach(btn=>{
+  if(btn.disabled)return; // "coming soon" items — nothing to wire up yet
+  btn.addEventListener('click',()=>handlePurchaseClick(btn));
 });
+$('iapRestore')?.addEventListener('click',()=>showToast('Purchases restore automatically — just sign back in on this device'));
+// (the button in the HTML uses a class, not an id — this listens either way)
+document.querySelectorAll('.iap-restore').forEach(btn=>{
+  btn.addEventListener('click',()=>showToast('Purchases restore automatically — just sign back in on this device'));
+});
+
+async function handlePurchaseClick(btn){
+  const productId=btn.dataset.productId;
+  const priceId=btn.dataset.priceId;
+  if(!productId){showToast('Not available yet');return;}
+  if(!window.CloudSync){showToast('Still connecting… try again in a moment');return;}
+
+  const isSub=btn.classList.contains('sub');
+  const originalText=btn.textContent;
+  btn.textContent='…';btn.disabled=true;
+
+  try{
+    if(await CloudSync.isPlayBillingAvailable()){
+      await CloudSync.buyOnAndroid(productId,isSub);
+      showToast('Purchase complete!');
+    } else {
+      if(!priceId){showToast('Not available on web yet');btn.textContent=originalText;btn.disabled=false;return;}
+      await CloudSync.buyOnWeb(productId,priceId); // this redirects to Stripe — page navigates away
+    }
+  }catch(err){
+    console.error('Purchase failed',err);
+    showToast('Purchase failed — please try again');
+    btn.textContent=originalText;btn.disabled=false;
+  }
+}
 
 /* ── RULES MODAL ── */
 $('rulesBtn').addEventListener('click',()=>$('rulesModal').classList.add('show'));

@@ -390,7 +390,7 @@
       <div class="sf-info">
         <div class="sf-name">Remove Ads</div>
         <div class="sf-desc">Enjoy an ad-free experience forever. One-time purchase, all tables unlocked.</div>
-        <button class="sf-price">$4.99 / lifetime</button>
+        <button class="sf-price" data-product-id="remove_ads" data-price-id="price_1TuwgaBLL7Zrt5nD7lJYmuhG">$2.99 / lifetime</button>
       </div>
     </div>
 
@@ -402,7 +402,7 @@
         <div class="iap-desc">$5,000 coins to get you started</div>
         <span class="iap-badge" style="background:rgba(111,201,119,.15);color:#6fc977;border:1px solid rgba(111,201,119,.3);">POPULAR</span>
       </div>
-      <button class="iap-buy">$0.99</button>
+      <button class="iap-buy" data-product-id="starter_pack" data-price-id="price_1TuwfJBLL7Zrt5nDXaFVo7U5">$4.99</button>
     </div>
     <div class="iap-card">
       <div class="iap-icon">💰</div>
@@ -411,7 +411,7 @@
         <div class="iap-desc">$25,000 coins + 1 week VIP</div>
         <span class="iap-badge" style="background:rgba(212,175,55,.15);color:#d4af37;border:1px solid rgba(212,175,55,.3);">+BONUS</span>
       </div>
-      <button class="iap-buy">$3.99</button>
+      <button class="iap-buy" data-product-id="high_roller" data-price-id="price_1TuwfqBLL7Zrt5nDzGohWeBZ">$19.99</button>
     </div>
     <div class="iap-card">
       <div class="iap-icon">💎</div>
@@ -420,7 +420,7 @@
         <div class="iap-desc">$100,000 coins + Monaco table access</div>
         <span class="iap-badge" style="background:rgba(140,80,255,.15);color:#a060ff;border:1px solid rgba(140,80,255,.3);">BEST VALUE</span>
       </div>
-      <button class="iap-buy">$9.99</button>
+      <button class="iap-buy" data-product-id="vip_bundle" data-price-id="price_1TuwgGBLL7Zrt5nDjWcpDWfJ">$49.99</button>
     </div>
 
     <div class="store-section-title">👑 Subscriptions</div>
@@ -431,7 +431,7 @@
         <div class="iap-desc">Ad-free + $10,000 coins/day + exclusive tables</div>
         <span class="iap-badge" style="background:rgba(140,80,255,.15);color:#a060ff;border:1px solid rgba(140,80,255,.3);">AUTO-RENEWS</span>
       </div>
-      <button class="iap-buy sub">$2.99/wk</button>
+      <button class="iap-buy sub" data-product-id="vip_weekly" data-price-id="price_1TuwgqBLL7Zrt5nD1rfwNPof">$4.99/wk</button>
     </div>
     <div class="iap-card">
       <div class="iap-icon">🏆</div>
@@ -440,7 +440,7 @@
         <div class="iap-desc">Everything in Weekly + $5,000 daily bonus + stats export</div>
         <span class="iap-badge" style="background:rgba(212,175,55,.15);color:#d4af37;border:1px solid rgba(212,175,55,.3);">SAVE 40%</span>
       </div>
-      <button class="iap-buy sub">$7.99/mo</button>
+      <button class="iap-buy sub" data-product-id="vip_monthly" data-price-id="price_1TuwhGBLL7Zrt5nDjVgOA5aM">$14.99/mo</button>
     </div>
 
     <div class="store-section-title">🎰 Table Access</div>
@@ -450,7 +450,7 @@
         <div class="iap-name">Paris Table</div>
         <div class="iap-desc">Unlock Paris without the $2,500 minimum</div>
       </div>
-      <button class="iap-buy free">Free Trial</button>
+      <button class="iap-buy free" disabled title="Coming soon">Coming Soon</button>
     </div>
     <div class="iap-card">
       <div class="iap-icon">🏙️</div>
@@ -458,7 +458,7 @@
         <div class="iap-name">Singapore Table</div>
         <div class="iap-desc">Unlock Singapore without the $10,000 minimum</div>
       </div>
-      <button class="iap-buy">$1.99</button>
+      <button class="iap-buy free" disabled title="Coming soon">Coming Soon</button>
     </div>
 
     <button class="iap-restore">Restore Purchases</button>
@@ -481,6 +481,7 @@
 </div><!-- /scaler -->
 
 
+<script type="module" src="cloud-sync.js"></script>
 <script src="game.js"></script>
 
 </body>

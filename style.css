@@ -443,6 +443,7 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .iap-card .iap-buy.sub{background:linear-gradient(135deg,#8c50ff,#5020c0);color:#fff;}
 .iap-card .iap-buy.free{background:rgba(255,255,255,.12);color:#fff;}
+.iap-card .iap-buy:disabled{opacity:.45;cursor:default;}
 .iap-restore{
   width:100%;padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);
   background:transparent;color:rgba(255,255,255,.5);font-size:17px;cursor:pointer;

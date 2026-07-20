@@ -10,18 +10,18 @@
  * (Firebase console > Project settings > General > Your apps > SDK config —
  * this object is NOT secret, it's fine to have it in client code).
  */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyAahMujv2IjdBKdLFoYguXbCz_b3zBIzSE",
+  authDomain: "blackjack-box-21.firebaseapp.com",
+  projectId: "blackjack-box-21",
+  storageBucket: "blackjack-box-21.firebasestorage.app",
+  messagingSenderId: "990610106334",
+  appId: "1:990610106334:web:a11eeb3d7693f6a870df4f",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -127,3 +127,7 @@ async function verifyAndroidPurchase(productId, purchaseToken, packageName, isSu
 }
 
 window.CloudSync = { init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable };
+// game.js is a classic (non-module) script and runs BEFORE this module finishes loading,
+// so it can't just check `if (window.CloudSync)` at the top level — it listens for this
+// event instead, which fires once CloudSync is actually ready to use.
+window.dispatchEvent(new Event('cloudsync-ready'));
