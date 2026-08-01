@@ -1789,6 +1789,24 @@ $('pwaInstallBtn').addEventListener('click', async () => {
   });
 })();
 
+/* ── prevent double-tap-to-zoom ──
+   CSS touch-action:manipulation + viewport user-scalable=no (see index.html)
+   handle this on most browsers, but some mobile Safari versions still
+   trigger zoom on a fast double-tap regardless — this is a JS backstop.
+   Only blocks when both the timing AND position match a real double-tap
+   (same spot, quick succession) — NOT just any two rapid taps, so quickly
+   tapping Hit then Stand on different buttons still works normally. */
+let lastTouchEnd=0,lastTouchX=0,lastTouchY=0;
+document.addEventListener('touchend',(e)=>{
+  const now=Date.now();
+  const touch=e.changedTouches[0];
+  const dx=touch?Math.abs(touch.clientX-lastTouchX):999;
+  const dy=touch?Math.abs(touch.clientY-lastTouchY):999;
+  if(now-lastTouchEnd<=300&&dx<30&&dy<30)e.preventDefault();
+  lastTouchEnd=now;
+  if(touch){lastTouchX=touch.clientX;lastTouchY=touch.clientY;}
+},{passive:false});
+
 /* ── INIT ── */
 if(typeof adConfig==='function'){
   adConfig({

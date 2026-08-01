@@ -1,6 +1,6 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html{height:100%;}
-body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:center;overflow:hidden;font-family:'Segoe UI',Roboto,Arial,sans-serif;}
+html{height:100%;touch-action:manipulation;}
+body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:center;overflow:hidden;font-family:'Segoe UI',Roboto,Arial,sans-serif;touch-action:manipulation;}
 
 /* ── SCALER ── */
 #scaler{position:fixed;top:0;left:0;transform-origin:top left;}
@@ -371,13 +371,15 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   flex:none;
 }
 .fs-back{
-  width:40px;height:40px;border-radius:50%;
-  background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.18);
+  position:absolute;bottom:22px;right:22px;z-index:5;
+  width:48px;height:48px;border-radius:50%;
+  background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.22);
   color:#fff;font-size:20px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;flex:none;
+  box-shadow:0 6px 18px rgba(0,0,0,.45);
 }
 .fs-title{color:#f4ecd8;font-weight:800;font-size:22px;flex:1;}
-.fs-body{flex:1;overflow-y:auto;padding:20px 16px 30px;}
+.fs-body{flex:1;overflow-y:auto;padding:20px 16px 90px;}
 
 /* ── STATS OVERLAY ── */
 #statsOverlay{background:linear-gradient(160deg,#050e0a 0%,#081a10 100%);}
@@ -566,7 +568,7 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   background:rgba(4,20,12,.97);
   border:1.5px solid rgba(255,255,255,.14);
   border-radius:18px;
-  padding:24px 20px 20px;
+  padding:24px 20px 80px;
 }
 .rules-inner h2{
   color:#d4af37;font-size:26px;font-weight:800;
@@ -594,11 +596,12 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .rule-highlight p{color:#f4ecd8;font-size:17px;line-height:1.8;}
 .rules-close{
-  position:absolute;top:22px;right:22px;
-  width:46px;height:46px;border-radius:50%;
-  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  position:absolute;bottom:22px;right:22px;z-index:5;
+  width:48px;height:48px;border-radius:50%;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);
   color:#fff;font-size:24px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 18px rgba(0,0,0,.45);
 }
 
 /* ── LANGUAGE OVERLAY ── */
