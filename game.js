@@ -274,22 +274,22 @@ function renderLobby(){
 
   const cityImg=CITY_IMG[tbl.id];
   $('tableCard').innerHTML=`
-    ${cityImg
-      ?`<img class="city-banner-img" src="${cityImg}" alt="${tbl.name}">`
-      :`<div class="city-icon ${tbl.cls}" style="color:${neonColor(tbl.cls)}">${tbl.svg}</div>
-        <div class="city-badge ${tbl.cls}" style="color:${neonColor(tbl.cls)};border-color:${neonColor(tbl.cls)};box-shadow:0 0 18px ${neonColor(tbl.cls)},inset 0 0 12px rgba(255,255,255,.06)">${tbl.name}</div>`
-    }
+    <div class="banner-slot">
+      ${cityImg
+        ?`<img class="city-banner-img" src="${cityImg}" alt="${tbl.name}">`
+        :`<div class="city-icon ${tbl.cls}" style="color:${neonColor(tbl.cls)}">${tbl.svg}</div>
+          <div class="city-badge ${tbl.cls}" style="color:${neonColor(tbl.cls)};border-color:${neonColor(tbl.cls)};box-shadow:0 0 18px ${neonColor(tbl.cls)},inset 0 0 12px rgba(255,255,255,.06)">${tbl.name}</div>`
+      }
+    </div>
     <div class="table-info">
       ${tbl.info.split('\n').map(l=>`<p>${l}</p>`).join('')}
-      ${locked?`<p class="info-locked">⚠ Need ${fmt(tbl.minStack)} to enter</p>`:''}
+      <p class="info-locked${locked?'':' hidden-slot'}">⚠ Need ${fmt(tbl.minStack)} to enter</p>
     </div>
     <button class="play-btn${locked?' locked':''}" id="playBtn">${locked?t('locked'):t('play')}</button>
-    ${locked?`<button class="watch-ad-btn" id="watchAdBtn">🎬 Watch Ad for ${fmt(500)}</button>`:''}
+    <button class="watch-ad-btn${locked?'':' hidden-slot'}" id="watchAdBtn">🎬 Watch Ad for ${fmt(500)}</button>
   `;
-  if(locked){
-    const wab=$('watchAdBtn');
-    if(wab)wab.addEventListener('click',showRewardedAd);
-  }
+  const wab=$('watchAdBtn');
+  if(wab)wab.addEventListener('click',()=>{ if(locked)showRewardedAd(); });
 
   // dots
   const dotsEl=$('dots');
