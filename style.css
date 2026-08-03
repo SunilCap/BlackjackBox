@@ -786,13 +786,13 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 /* ── RESULT REVEAL STATES ── */
 .pc-reveal{
   transform:scale(1.13)!important;
-  transform-origin:center bottom;
+  transform-origin:center top;
   z-index:10;
   transition:transform .32s cubic-bezier(.18,.9,.2,1.15),opacity .25s;
 }
 /* keep growth inward on edge columns so it can't push past the screen edge */
-.play-zone .play-col.pc-reveal:first-child{transform-origin:left bottom!important;}
-.play-zone .play-col.pc-reveal:last-child{transform-origin:right bottom!important;}
+.play-zone .play-col.pc-reveal:first-child{transform-origin:left top!important;}
+.play-zone .play-col.pc-reveal:last-child{transform-origin:right top!important;}
 .pc-reveal .pc-res{font-size:18px!important;padding:6px 18px!important;}
 .pc-reveal .pc-total{font-size:18px!important;padding:6px 18px!important;}
 .pc-reveal .pc-sub .pc-res{font-size:12px!important;padding:3px 10px!important;}
@@ -815,20 +815,20 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .pc-res.push{background:rgba(180,190,184,.15);color:#cdd5d1;border:1px solid rgba(180,190,184,.3);}
 
 /* ── DEALER HAND RESULT HIGHLIGHT ── */
-.hand-zone{transition:transform .32s cubic-bezier(.18,.9,.2,1.15);transform-origin:center top;}
+.hand-zone{transition:transform .32s cubic-bezier(.18,.9,.2,1.15);transform-origin:center bottom;}
 .hand-zone.hz-reveal{
   transform:scale(1.1);
   z-index:8;
 }
 
 /* ── SPLIT HAND RESULT HIGHLIGHT ── */
-.split-col{transition:transform .32s cubic-bezier(.18,.9,.2,1.15);transform-origin:center bottom;}
+.split-col{transition:transform .32s cubic-bezier(.18,.9,.2,1.15);transform-origin:center top;}
 .split-col.sc-reveal{
   transform:scale(1.1);
   z-index:8;
 }
-.split-row .split-col.sc-reveal:first-child{transform-origin:left bottom!important;}
-.split-row .split-col.sc-reveal:last-child{transform-origin:right bottom!important;}
+.split-row .split-col.sc-reveal:first-child{transform-origin:left top!important;}
+.split-row .split-col.sc-reveal:last-child{transform-origin:right top!important;}
 .split-col.sc-reveal .split-total{font-size:19px!important;padding:6px 16px!important;}
 .split-col.sc-dimmed{
   transform:scale(0.76)!important;
