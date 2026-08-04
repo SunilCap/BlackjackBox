@@ -337,6 +337,43 @@ function updateChipTray(chips){
 
 $('arrowL').addEventListener('click',()=>{currentTableIdx=(currentTableIdx-1+TABLES.length)%TABLES.length;renderLobby();});
 $('arrowR').addEventListener('click',()=>{currentTableIdx=(currentTableIdx+1)%TABLES.length;renderLobby();});
+
+/* ── SWIPE NAVIGATION (lobby carousel) ──
+   Same table-switching logic as the arrow buttons, triggered by a
+   horizontal finger swipe instead of a tap. */
+(function initCarouselSwipe(){
+  const carousel=document.querySelector('.carousel');
+  if(!carousel)return;
+  let startX=0,startY=0,startT=0,tracking=false;
+  const SWIPE_MIN_DIST=40;   // px — how far counts as an intentional swipe
+  const SWIPE_MAX_TIME=600;  // ms — ignore slow drags, only real swipes
+
+  carousel.addEventListener('touchstart',(e)=>{
+    if(e.touches.length!==1)return;
+    startX=e.touches[0].clientX;
+    startY=e.touches[0].clientY;
+    startT=Date.now();
+    tracking=true;
+  },{passive:true});
+
+  carousel.addEventListener('touchend',(e)=>{
+    if(!tracking)return;
+    tracking=false;
+    const touch=e.changedTouches[0];
+    const dx=touch.clientX-startX;
+    const dy=touch.clientY-startY;
+    const dt=Date.now()-startT;
+    if(dt>SWIPE_MAX_TIME)return;
+    if(Math.abs(dx)<SWIPE_MIN_DIST)return;
+    if(Math.abs(dx)<=Math.abs(dy))return; // more vertical than horizontal — not a swipe
+    if(dx<0){ // swiped left -> next table
+      currentTableIdx=(currentTableIdx+1)%TABLES.length;
+    } else { // swiped right -> previous table
+      currentTableIdx=(currentTableIdx-1+TABLES.length)%TABLES.length;
+    }
+    renderLobby();
+  },{passive:true});
+})();
 $('lobbyAdd').addEventListener('click',()=>{bankroll+=500;$('lobbyBal').textContent=fmt(bankroll);renderLobby();});
 
 function enterGame(tbl){
