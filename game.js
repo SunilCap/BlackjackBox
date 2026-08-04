@@ -426,12 +426,31 @@ let actx;
 let soundMuted=false;
 function ac(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();return actx;}
 function tone(f,type,dur,vol,del){if(soundMuted)return;try{const a=ac(),g=a.createGain(),o=a.createOscillator();o.type=type;o.frequency.value=f;const t=a.currentTime+(del||0);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+dur+.05);}catch(e){}}
+
+/* ── background music ──
+   Browsers block audio autoplay until the user has actually interacted with
+   the page, so this can't just play on load — it starts on the first tap/
+   click anywhere, then the music button toggles it from there. */
+const bgMusic=$('bgMusic');
+if(bgMusic)bgMusic.volume=0.35;
+let musicStarted=false;
+function startBgMusicOnce(){
+  if(musicStarted||!bgMusic||soundMuted)return;
+  musicStarted=true;
+  bgMusic.play().catch(()=>{musicStarted=false;}); // ignore rejection; will just retry on next interaction
+}
+document.addEventListener('pointerdown',startBgMusicOnce,{once:false});
+
 const _musicBtn=$('musicBtn');
 if(_musicBtn){
   _musicBtn.addEventListener('click',()=>{
     soundMuted=!soundMuted;
     _musicBtn.querySelector('img').src=soundMuted?'img/icon-mute.png':'img/icon-music.png';
     if(typeof adConfig==='function')adConfig({sound:soundMuted?'off':'on'});
+    if(bgMusic){
+      if(soundMuted)bgMusic.pause();
+      else{ if(!musicStarted)startBgMusicOnce(); else bgMusic.play().catch(()=>{}); }
+    }
   });
 }
 function nBlip(dur,vol){try{const a=ac(),buf=a.createBuffer(1,a.sampleRate*.1,a.sampleRate),g=a.createGain();const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*.25;const src=a.createBufferSource();src.buffer=buf;src.connect(g);g.connect(a.destination);g.gain.setValueAtTime(vol,a.currentTime);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+dur);src.start();src.stop(a.currentTime+dur+.05);}catch(e){}}
