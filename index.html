@@ -106,6 +106,10 @@
     </div>
   </div>
 
+  <button class="daily-bonus-banner hidden" id="dailyBonusBanner">
+    🎁 <span id="dbBannerText">Day 1 — Claim $500</span>
+  </button>
+
   <div class="carousel">
     <button class="arrow left" id="arrowL">&#9664;</button>
     <button class="arrow right" id="arrowR">&#9654;</button>
@@ -129,7 +133,7 @@
   <button class="pwa-install-btn" id="pwaInstallBtn">
     <span>📲</span> Add to Home Screen
   </button>
-  <div class="version-badge" id="versionBadge">v1.3.0</div>
+  <div class="version-badge" id="versionBadge">v1.4.0</div>
 
   <div class="lobby-bottom">
     <button class="lb-btn has-img" id="musicBtn"><img src="img/icon-music.png" alt="Music"></button>
@@ -137,6 +141,19 @@
     <button class="lb-btn has-img" id="lobbyStatsBtn"><img src="img/icon-chart.png" alt="Stats"></button>
     <button class="lb-btn has-img" id="rulesBtn"><img src="img/icon-question.png" alt="Rules"></button>
     <button class="lb-btn" id="langBtn" style="font-size:15px;font-weight:800;">EN</button>
+  </div>
+
+  <!-- DAILY BONUS MODAL -->
+  <div id="dailyBonusModal">
+    <div class="db-inner">
+      <div class="db-icon">🎁</div>
+      <h2 class="db-title">Daily Bonus!</h2>
+      <div class="db-streak" id="dbStreakLabel">Day 1 of 7</div>
+      <div class="db-ladder" id="dbLadder"></div>
+      <div class="db-amount" id="dbAmount">+$500</div>
+      <button class="db-claim-btn" id="dbClaimBtn">Claim</button>
+      <button class="db-skip-btn" id="dbSkipBtn">Maybe later</button>
+    </div>
   </div>
 
   <!-- RULES MODAL -->

@@ -215,6 +215,9 @@ const TABLES=[
 let bankroll=1000,startBR=1000,shoe=[],state="betting";
 let cloudRemoveAds=false,cloudVipUntil=0,cloudCoinsMerged=0;
 
+const DAILY_BONUS_LADDER=[500,750,1000,1250,1500,1750,2000];
+let dailyBonusPopupShown=false;
+
 window.addEventListener('cloudsync-ready',()=>{
   CloudSync.init((cloudState)=>{
     // Merge any NEW purchased coins since we last merged (purchases only —
@@ -230,8 +233,66 @@ window.addEventListener('cloudsync-ready',()=>{
     }
     cloudRemoveAds=!!cloudState.removeAds;
     cloudVipUntil=cloudState.vipUntil||0;
+
+    // daily bonus: show/hide the lobby fallback button, and auto-popup once per load
+    const dbAvailable=CloudSync.isDailyBonusAvailable();
+    const banner=$('dailyBonusBanner');
+    if(banner){
+      if(dbAvailable){
+        banner.classList.remove('hidden');
+        const day=CloudSync.nextDailyBonusDay();
+        $('dbBannerText').textContent='Day '+day+' — Claim '+fmt(DAILY_BONUS_LADDER[day-1]);
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+    if(dbAvailable&&!dailyBonusPopupShown){
+      dailyBonusPopupShown=true;
+      setTimeout(showDailyBonusModal,800); // small delay so it doesn't collide with the loading screen fade-out
+    }
   });
 });
+
+function populateDailyBonusModal(){
+  const day=CloudSync.nextDailyBonusDay();
+  $('dbStreakLabel').textContent='Day '+day+' of 7';
+  $('dbAmount').textContent='+'+fmt(DAILY_BONUS_LADDER[day-1]);
+  const ladder=$('dbLadder');
+  ladder.innerHTML='';
+  for(let i=1;i<=7;i++){
+    const pip=document.createElement('div');
+    pip.className='db-pip'+(i<day?' claimed':i===day?' today':'');
+    pip.textContent=i<day?'✓':('D'+i);
+    ladder.appendChild(pip);
+  }
+}
+function showDailyBonusModal(){
+  populateDailyBonusModal();
+  $('dailyBonusModal').classList.add('show');
+}
+async function claimDailyBonusFlow(){
+  const btn=$('dbClaimBtn');
+  const original=btn.textContent;
+  btn.textContent='…';btn.disabled=true;
+  try{
+    const result=await CloudSync.claimDailyBonus();
+    if(result.alreadyClaimed){
+      showToast('Already claimed today — come back tomorrow!');
+    } else {
+      bankroll+=result.granted;
+      cloudCoinsMerged=result.bankroll; // keep in sync so the purchase-merge watcher above doesn't ALSO toast this
+      updateUI();
+      showToast('Day '+result.streak+' bonus: +'+fmt(result.granted)+'!');
+    }
+    $('dailyBonusModal').classList.remove('show');
+    $('dailyBonusBanner').classList.add('hidden');
+  }catch(err){
+    console.error('Daily bonus claim failed',err);
+    showToast('Could not claim bonus — try again');
+  }
+  btn.textContent=original;btn.disabled=false;
+}
+
 
 // returning from Stripe Checkout — just clean the URL and show a friendly message;
 // the actual coin grant happens above once Firestore updates (usually within a couple seconds)
@@ -249,6 +310,9 @@ let stats={hands:0,won:0,lost:0,push:0,bj:0,bust:0,curStreak:0,bestStreak:0};
 let currentTableIdx=0,activeTable=TABLES[0];
 
 const $=id=>document.getElementById(id);
+$('dbClaimBtn')?.addEventListener('click',claimDailyBonusFlow);
+$('dbSkipBtn')?.addEventListener('click',()=>$('dailyBonusModal').classList.remove('show'));
+$('dailyBonusBanner')?.addEventListener('click',showDailyBonusModal);
 const SUITS=[{sym:"♠",c:"black"},{sym:"♥",c:"red"},{sym:"♦",c:"red"},{sym:"♣",c:"black"}];
 const SUIT_IMG={"♠":"img/suit-spade.png","♥":"img/suit-heart.png","♦":"img/suit-diamond.png","♣":"img/suit-club.png"};
 const RANKS=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];

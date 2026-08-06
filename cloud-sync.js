@@ -145,7 +145,47 @@ async function verifyAndroidPurchase(productId, purchaseToken, packageName, isSu
   return verifyPlayPurchase({ productId, purchaseToken, packageName, isSubscription });
 }
 
-window.CloudSync = { init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable };
+/**
+ * Claim today's daily bonus. The server independently re-validates the
+ * streak (calendar day comparison, UTC) — this call can't be spoofed by
+ * fiddling with client state, same trust model as purchases.
+ * @returns {Promise<{alreadyClaimed:boolean, granted?:number, streak:number, bankroll:number}>}
+ */
+async function claimDailyBonus() {
+  await authReady;
+  const fn = httpsCallable(functions, "claimDailyBonus");
+  const result = await fn();
+  return result.data;
+}
+
+/**
+ * Client-side ONLY eligibility check, for deciding whether to show the
+ * popup/lobby button — purely cosmetic, the server re-checks for real when
+ * claimDailyBonus() is actually called, so this being "wrong" for a moment
+ * (e.g. stale cache right after midnight UTC) can't be exploited.
+ */
+function isDailyBonusAvailable() {
+  const state = getState();
+  if (!state.lastDailyBonusClaim) return true;
+  const todayUTC = new Date().toISOString().slice(0, 10);
+  const lastClaimUTC = new Date(state.lastDailyBonusClaim).toISOString().slice(0, 10);
+  return todayUTC !== lastClaimUTC;
+}
+
+/** Which streak day claiming NOW would land on — for showing "Day 3" etc. before claiming. */
+function nextDailyBonusDay() {
+  const state = getState();
+  if (!state.lastDailyBonusClaim) return 1;
+  const now = Date.now();
+  const todayUTC = new Date(now).toISOString().slice(0, 10);
+  const yesterdayUTC = new Date(now - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const lastClaimUTC = new Date(state.lastDailyBonusClaim).toISOString().slice(0, 10);
+  if (lastClaimUTC === todayUTC) return (state.dailyStreak || 0); // already claimed — this IS today's day
+  if (lastClaimUTC === yesterdayUTC) return Math.min((state.dailyStreak || 0) + 1, 7);
+  return 1;
+}
+
+window.CloudSync = { init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable, claimDailyBonus, isDailyBonusAvailable, nextDailyBonusDay };
 // game.js is a classic (non-module) script and runs BEFORE this module finishes loading,
 // so it can't just check `if (window.CloudSync)` at the top level — it listens for this
 // event instead, which fires once CloudSync is actually ready to use.
