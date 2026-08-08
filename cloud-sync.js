@@ -16,7 +16,7 @@ import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasej
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAahMujv2IjdBKdLFoYguXbCz_b3zBIzSE",
+  apiKey: "AIzaSyAzXNwrzyLVcZK2DT6FKseZhOlmRIXIcXU",
   authDomain: "blackjack-box-21.firebaseapp.com",
   projectId: "blackjack-box-21",
   storageBucket: "blackjack-box-21.firebasestorage.app",
