@@ -11,7 +11,11 @@
  * this object is NOT secret, it's fine to have it in client code).
  */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import {
+  getAuth, signInAnonymously, onAuthStateChanged,
+  GoogleAuthProvider, linkWithPopup, signInWithPopup, signInWithCredential,
+  EmailAuthProvider, linkWithCredential, signInWithEmailAndPassword,
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
 
@@ -185,7 +189,77 @@ function nextDailyBonusDay() {
   return 1;
 }
 
-window.CloudSync = { init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable, claimDailyBonus, isDailyBonusAvailable, nextDailyBonusDay };
+/**
+ * "Protect your purchases" — upgrades the current anonymous account to a
+ * real Google-linked one, keeping all existing bankroll/purchases/streak.
+ *
+ * If this Google account was already used before (e.g. the player is on a
+ * new device/browser and had previously linked there), Firebase can't
+ * "link" it a second time — instead we sign into THAT existing account,
+ * which means whatever this current anonymous session had gets replaced by
+ * the older, already-linked account's data. That's the correct behavior
+ * for "restore my account," just worth knowing it's not a merge.
+ *
+ * @returns {Promise<{restored:boolean, label:string}>}
+ *   restored=true means we signed into a pre-existing account instead of
+ *   linking this one — the UI should say "Welcome back" rather than
+ *   "Account linked."
+ */
+async function linkWithGoogle() {
+  await authReady;
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await linkWithPopup(auth.currentUser, provider);
+    return { restored: false, label: result.user.displayName || result.user.email || 'Google account' };
+  } catch (err) {
+    if (err.code === 'auth/credential-already-in-use') {
+      const credential = GoogleAuthProvider.credentialFromError(err);
+      const result = await signInWithCredential(auth, credential);
+      return { restored: true, label: result.user.displayName || result.user.email || 'Google account' };
+    }
+    throw err;
+  }
+}
+
+/**
+ * Same idea as linkWithGoogle(), but with an email + password instead.
+ * @returns {Promise<{restored:boolean, label:string}>}
+ */
+async function linkWithEmail(email, password) {
+  await authReady;
+  const credential = EmailAuthProvider.credential(email, password);
+  try {
+    const result = await linkWithCredential(auth.currentUser, credential);
+    return { restored: false, label: result.user.email };
+  } catch (err) {
+    if (err.code === 'auth/email-already-in-use') {
+      // an account with this email already exists — sign into it instead,
+      // using the password they just typed (fails with auth/wrong-password
+      // if it doesn't match, which the caller should show to the player)
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      return { restored: true, label: result.user.email };
+    }
+    throw err;
+  }
+}
+
+/** Is the current session tied to a real account, or still just anonymous? */
+function isAccountLinked() {
+  return !!(auth.currentUser && auth.currentUser.providerData.length > 0);
+}
+
+/** Display label for the linked account (email or Google display name), or null if still anonymous. */
+function getAccountLabel() {
+  if (!isAccountLinked()) return null;
+  const p = auth.currentUser.providerData[0];
+  return p.displayName || p.email || 'Linked account';
+}
+
+window.CloudSync = {
+  init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable,
+  claimDailyBonus, isDailyBonusAvailable, nextDailyBonusDay,
+  linkWithGoogle, linkWithEmail, isAccountLinked, getAccountLabel,
+};
 // game.js is a classic (non-module) script and runs BEFORE this module finishes loading,
 // so it can't just check `if (window.CloudSync)` at the top level — it listens for this
 // event instead, which fires once CloudSync is actually ready to use.

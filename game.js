@@ -233,6 +233,7 @@ window.addEventListener('cloudsync-ready',()=>{
     }
     cloudRemoveAds=!!cloudState.removeAds;
     cloudVipUntil=cloudState.vipUntil||0;
+    refreshAccountCard();
 
     // daily bonus: show/hide the lobby fallback button, and auto-popup once per load
     const dbAvailable=CloudSync.isDailyBonusAvailable();
@@ -313,6 +314,69 @@ const $=id=>document.getElementById(id);
 $('dbClaimBtn')?.addEventListener('click',claimDailyBonusFlow);
 $('dbSkipBtn')?.addEventListener('click',()=>$('dailyBonusModal').classList.remove('show'));
 $('dailyBonusBanner')?.addEventListener('click',showDailyBonusModal);
+
+/* ── ACCOUNT LINKING ── */
+function refreshAccountCard(){
+  const card=$('accountCard');
+  if(!card||!window.CloudSync)return;
+  if(CloudSync.isAccountLinked()){
+    card.classList.add('linked');
+    $('accountTitle').textContent='Account Protected ✓';
+    $('accountDesc').textContent='Signed in as '+CloudSync.getAccountLabel()+'. Your purchases are safe across devices.';
+    $('accountActions').innerHTML='';
+  } else {
+    card.classList.remove('linked');
+    $('accountTitle').textContent='Protect Your Purchases';
+    $('accountDesc').textContent="Link an account so your coins and purchases survive a new device or a cleared browser.";
+  }
+}
+
+$('accountGoogleBtn')?.addEventListener('click',async()=>{
+  const btn=$('accountGoogleBtn');
+  const original=btn.textContent;
+  btn.textContent='…';btn.disabled=true;
+  try{
+    const result=await CloudSync.linkWithGoogle();
+    refreshAccountCard();
+    showToast(result.restored?'Welcome back!':'Account linked!');
+  }catch(err){
+    console.error('Google link failed',err);
+    if(err.code!=='auth/popup-closed-by-user')showToast('Could not sign in — try again');
+  }
+  btn.textContent=original;btn.disabled=false;
+});
+
+$('accountEmailLink')?.addEventListener('click',()=>{
+  $('eaEmail').value='';$('eaPassword').value='';$('eaError').textContent='';
+  $('emailAccountModal').classList.add('show');
+});
+$('eaClose')?.addEventListener('click',()=>$('emailAccountModal').classList.remove('show'));
+
+$('eaSubmit')?.addEventListener('click',async()=>{
+  const email=$('eaEmail').value.trim();
+  const password=$('eaPassword').value;
+  const errEl=$('eaError');
+  errEl.textContent='';
+  if(!email||!email.includes('@')){errEl.textContent='Enter a valid email address';return;}
+  if(password.length<6){errEl.textContent='Password must be at least 6 characters';return;}
+
+  const btn=$('eaSubmit');
+  const original=btn.textContent;
+  btn.textContent='…';btn.disabled=true;
+  try{
+    const result=await CloudSync.linkWithEmail(email,password);
+    $('emailAccountModal').classList.remove('show');
+    refreshAccountCard();
+    showToast(result.restored?'Welcome back!':'Account linked!');
+  }catch(err){
+    console.error('Email link failed',err);
+    if(err.code==='auth/wrong-password')errEl.textContent='Wrong password for that email';
+    else if(err.code==='auth/invalid-email')errEl.textContent='That email address looks invalid';
+    else if(err.code==='auth/weak-password')errEl.textContent='Please use a stronger password';
+    else errEl.textContent='Something went wrong — try again';
+  }
+  btn.textContent=original;btn.disabled=false;
+});
 const SUITS=[{sym:"♠",c:"black"},{sym:"♥",c:"red"},{sym:"♦",c:"red"},{sym:"♣",c:"black"}];
 const SUIT_IMG={"♠":"img/suit-spade.png","♥":"img/suit-heart.png","♦":"img/suit-diamond.png","♣":"img/suit-club.png"};
 const RANKS=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];

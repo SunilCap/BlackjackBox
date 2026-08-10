@@ -133,7 +133,7 @@
   <button class="pwa-install-btn" id="pwaInstallBtn">
     <span>📲</span> Add to Home Screen
   </button>
-  <div class="version-badge" id="versionBadge">v1.4.0</div>
+  <div class="version-badge" id="versionBadge">v1.5.0</div>
 
   <div class="lobby-bottom">
     <button class="lb-btn has-img" id="musicBtn"><img src="img/icon-music.png" alt="Music"></button>
@@ -141,19 +141,6 @@
     <button class="lb-btn has-img" id="lobbyStatsBtn"><img src="img/icon-chart.png" alt="Stats"></button>
     <button class="lb-btn has-img" id="rulesBtn"><img src="img/icon-question.png" alt="Rules"></button>
     <button class="lb-btn" id="langBtn" style="font-size:15px;font-weight:800;">EN</button>
-  </div>
-
-  <!-- DAILY BONUS MODAL -->
-  <div id="dailyBonusModal">
-    <div class="db-inner">
-      <div class="db-icon">🎁</div>
-      <h2 class="db-title">Daily Bonus!</h2>
-      <div class="db-streak" id="dbStreakLabel">Day 1 of 7</div>
-      <div class="db-ladder" id="dbLadder"></div>
-      <div class="db-amount" id="dbAmount">+$500</div>
-      <button class="db-claim-btn" id="dbClaimBtn">Claim</button>
-      <button class="db-skip-btn" id="dbSkipBtn">Maybe later</button>
-    </div>
   </div>
 
   <!-- RULES MODAL -->
@@ -401,6 +388,19 @@
   </div>
   <div class="fs-body">
 
+    <!-- ACCOUNT LINKING -->
+    <div class="account-card" id="accountCard">
+      <div class="account-icon">🔒</div>
+      <div class="account-info">
+        <div class="account-title" id="accountTitle">Protect Your Purchases</div>
+        <div class="account-desc" id="accountDesc">Link an account so your coins and purchases survive a new device or a cleared browser.</div>
+        <div class="account-actions" id="accountActions">
+          <button class="account-google-btn" id="accountGoogleBtn">Sign in with Google</button>
+          <button class="account-email-link" id="accountEmailLink">or use email</button>
+        </div>
+      </div>
+    </div>
+
     <div class="store-section-title">⭐ Featured</div>
     <div class="store-featured">
       <div class="sf-icon">🚫</div>
@@ -491,6 +491,32 @@
   </div>
   <div class="fs-body">
     <div class="lang-grid" id="langGrid"></div>
+  </div>
+</div>
+
+<!-- EMAIL ACCOUNT MODAL (top-level: must be able to stack above Store, not just the lobby) -->
+<div id="emailAccountModal">
+  <div class="ea-inner">
+    <button class="ea-close" id="eaClose">✕</button>
+    <h2 class="ea-title">Sign in with Email</h2>
+    <div class="ea-sub">Already used this email before? We'll sign you back into that account.</div>
+    <input type="email" id="eaEmail" class="ea-input" placeholder="Email address" autocomplete="email">
+    <input type="password" id="eaPassword" class="ea-input" placeholder="Password (min 6 characters)" autocomplete="new-password">
+    <div class="ea-error" id="eaError"></div>
+    <button class="ea-submit-btn" id="eaSubmit">Continue</button>
+  </div>
+</div>
+
+<!-- DAILY BONUS MODAL (top-level, same reasoning) -->
+<div id="dailyBonusModal">
+  <div class="db-inner">
+    <div class="db-icon">🎁</div>
+    <h2 class="db-title">Daily Bonus!</h2>
+    <div class="db-streak" id="dbStreakLabel">Day 1 of 7</div>
+    <div class="db-ladder" id="dbLadder"></div>
+    <div class="db-amount" id="dbAmount">+$500</div>
+    <button class="db-claim-btn" id="dbClaimBtn">Claim</button>
+    <button class="db-skip-btn" id="dbSkipBtn">Maybe later</button>
   </div>
 </div>
 
