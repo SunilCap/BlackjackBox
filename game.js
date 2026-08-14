@@ -214,20 +214,33 @@ const TABLES=[
 /* ── STATE ── */
 let bankroll=1000,startBR=1000,shoe=[],state="betting";
 let cloudRemoveAds=false,cloudVipUntil=0,cloudCoinsMerged=0;
+let cloudSyncedOnce=false; // false until the FIRST cloud snapshot lands this page load — see cloudsync-ready below
 
 const DAILY_BONUS_LADDER=[500,750,1000,1250,1500,1750,2000];
 let dailyBonusPopupShown=false;
 
 window.addEventListener('cloudsync-ready',()=>{
   CloudSync.init((cloudState)=>{
-    // Merge any NEW purchased coins since we last merged (purchases only —
-    // regular hand wins/losses stay local, see the earlier chat note on this).
-    const newlyPurchased=(cloudState.bankroll||0)-cloudCoinsMerged;
-    if(newlyPurchased>0){
-      bankroll+=newlyPurchased;
-      cloudCoinsMerged=cloudState.bankroll;
-      updateUI();
-      if(cloudCoinsMerged>1000){ // don't toast on the very first/default load
+    if(!cloudSyncedOnce){
+      // First cloud snapshot after this page load: the local `bankroll` var
+      // is just today's fresh-JS-default (1000), it has no real winnings to
+      // protect yet, so the cloud total is authoritative — SET, don't add.
+      // (Adding here was the bug: it double-counted the entire existing
+      // cloud bankroll on top of the local default on every single reload.)
+      cloudSyncedOnce=true;
+      bankroll=cloudState.bankroll||0;
+      cloudCoinsMerged=cloudState.bankroll||0;
+      updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby();
+    } else {
+      // Live update during this same session (e.g. a purchase completing,
+      // or claimDailyBonusFlow's own grant echoing back) — only fold in the
+      // NEW amount since we last merged, so in-session hand wins/losses
+      // (which stay local-only) aren't clobbered.
+      const newlyPurchased=(cloudState.bankroll||0)-cloudCoinsMerged;
+      if(newlyPurchased>0){
+        bankroll+=newlyPurchased;
+        cloudCoinsMerged=cloudState.bankroll;
+        updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby();
         showToast('+'+fmt(newlyPurchased)+' from your purchase!');
       }
     }
@@ -282,7 +295,7 @@ async function claimDailyBonusFlow(){
     } else {
       bankroll+=result.granted;
       cloudCoinsMerged=result.bankroll; // keep in sync so the purchase-merge watcher above doesn't ALSO toast this
-      updateUI();
+      updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby();
       showToast('Day '+result.streak+' bonus: +'+fmt(result.granted)+'!');
     }
     $('dailyBonusModal').classList.remove('show');
@@ -333,17 +346,30 @@ function refreshAccountCard(){
 
 $('accountGoogleBtn')?.addEventListener('click',async()=>{
   const btn=$('accountGoogleBtn');
-  const original=btn.textContent;
-  btn.textContent='…';btn.disabled=true;
+  btn.textContent='Redirecting…';btn.disabled=true;
   try{
-    const result=await CloudSync.linkWithGoogle();
-    refreshAccountCard();
-    showToast(result.restored?'Welcome back!':'Account linked!');
+    await CloudSync.linkWithGoogle(); // navigates the page away to Google — nothing after this runs
   }catch(err){
-    console.error('Google link failed',err);
-    if(err.code!=='auth/popup-closed-by-user')showToast('Could not sign in — try again');
+    console.error('Google redirect failed to start',err);
+    showToast('Could not start sign-in — try again');
+    btn.textContent='Sign in with Google';btn.disabled=false;
   }
-  btn.textContent=original;btn.disabled=false;
+});
+
+// Fires on the page load right after coming back from Google's redirect flow
+// (handled in cloud-sync.js's init(), via getRedirectResult()).
+window.addEventListener('account-linked',(e)=>{
+  refreshAccountCard();
+  showToast(e.detail.restored?'Welcome back!':'Account linked!');
+  // the redirect flow fully reloaded the page — bring the player back to
+  // the Store screen they started from, instead of leaving them at the lobby
+  setTimeout(()=>{
+    $('lobby')?.classList.add('hide');
+    $('storeOverlay')?.classList.add('show');
+  },900); // small delay so it doesn't fight with the loading screen fade-out
+});
+window.addEventListener('account-link-failed',(e)=>{
+  showToast(e.detail.message||'Could not sign in — try again');
 });
 
 $('accountEmailLink')?.addEventListener('click',()=>{
