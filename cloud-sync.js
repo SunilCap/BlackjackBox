@@ -33,6 +33,16 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
+const CLOUD_CACHE_KEY = 'bjbox:lastKnownState'; // must match the key game.js reads on load
+function cacheStateLocally(state) {
+  try {
+    localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({
+      bankroll: state.bankroll, removeAds: state.removeAds, vipUntil: state.vipUntil,
+      dailyStreak: state.dailyStreak, lastDailyBonusClaim: state.lastDailyBonusClaim,
+    }));
+  } catch (e) { /* storage unavailable — cache is a nice-to-have, safe to skip */ }
+}
+
 let currentUid = null;
 let latestUserDoc = { bankroll: 1000, removeAds: false, vipUntil: 0, unlockedTables: [] };
 let onUpdateCallback = null;
@@ -114,6 +124,7 @@ function init(onUpdate) {
     onSnapshot(doc(db, "users", currentUid), (snap) => {
       if (snap.exists()) {
         latestUserDoc = snap.data();
+        cacheStateLocally(latestUserDoc);
         onUpdateCallback?.(latestUserDoc);
       }
     });
@@ -288,10 +299,84 @@ function getAccountLabel() {
   return p.displayName || p.email || 'Linked account';
 }
 
+/**
+ * Hand-outcome sync, batched every 5 rounds.
+ *
+ * game.js calls this once per round (from endCleanup()) with that round's
+ * net bankroll change and total wagered — NOT awaited, NOT blocking play.
+ * Every 5 calls, the accumulated batch is sent to the server in the
+ * background. Play continues immediately regardless of whether the network
+ * call is still in flight, has failed, or is retrying.
+ *
+ * Deliberately not persisted to localStorage/disk — if the tab is killed
+ * before a batch flushes, at most the last (<5) rounds' deltas are lost,
+ * same as the trade-off already accepted for regular in-session play.
+ */
+const HANDS_PER_SYNC_BATCH = 5;
+let currentBatch = { delta: 0, wagered: 0, hands: 0 };
+let syncQueue = []; // closed batches waiting to be sent, in order
+let syncInFlight = false;
+
+function recordHandForSync(delta, wagered) {
+  currentBatch.delta += delta;
+  currentBatch.wagered += wagered;
+  currentBatch.hands += 1;
+  if (currentBatch.hands >= HANDS_PER_SYNC_BATCH) {
+    closeBatchAndFlush();
+  }
+}
+
+/** Force whatever's accumulated so far out immediately — call this when leaving a table. */
+function flushPendingHandSync() {
+  if (currentBatch.hands > 0) closeBatchAndFlush();
+}
+
+function closeBatchAndFlush() {
+  syncQueue.push({
+    delta: currentBatch.delta,
+    wagered: currentBatch.wagered,
+    // idempotency token: lets a retried call that actually succeeded server-side
+    // (but whose response we never received) get recognized and no-op'd rather
+    // than double-applied.
+    token: `${currentUid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  });
+  currentBatch = { delta: 0, wagered: 0, hands: 0 };
+  processSyncQueue();
+}
+
+async function processSyncQueue() {
+  if (syncInFlight || syncQueue.length === 0) return;
+  syncInFlight = true;
+  const batch = syncQueue[0];
+  try {
+    await authReady;
+    const fn = httpsCallable(functions, "syncBankrollDelta");
+    await fn({ delta: batch.delta, wagered: batch.wagered, syncToken: batch.token });
+    syncQueue.shift(); // sent successfully — drop it and try the next one
+  } catch (err) {
+    console.error("Bankroll sync failed, will retry with the next round", err);
+    // leave it at the front of the queue — the next recordHandForSync()
+    // batch-close (or the next processSyncQueue() call) will retry it
+    // before sending anything newer, so order/idempotency stay intact.
+  } finally {
+    syncInFlight = false;
+    if (syncQueue.length > 0) processSyncQueue(); // more queued (e.g. retries piling up) — keep draining
+  }
+}
+
+// Best-effort: try to get a partial batch out if the player backgrounds/closes
+// the tab mid-session. Not guaranteed to complete (the page can die before
+// the async call resolves) — it's a bonus attempt, not a substitute for the
+// every-5-rounds cadence above.
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushPendingHandSync();
+});
+
 window.CloudSync = {
   init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable,
   claimDailyBonus, isDailyBonusAvailable, nextDailyBonusDay,
   linkWithGoogle, linkWithEmail, isAccountLinked, getAccountLabel,
+  recordHandForSync, flushPendingHandSync,
 };
 // game.js is a classic (non-module) script and runs BEFORE this module finishes loading,
 // so it can't just check `if (window.CloudSync)` at the top level — it listens for this

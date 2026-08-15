@@ -212,9 +212,25 @@ const TABLES=[
 ];
 
 /* ── STATE ── */
-let bankroll=1000,startBR=1000,shoe=[],state="betting";
-let cloudRemoveAds=false,cloudVipUntil=0,cloudCoinsMerged=0;
+/* Last-known cloud state, cached locally purely to avoid the "flash of 1000"
+   on load — game.js reads this synchronously before Firebase has even
+   finished loading, so the lobby paints the real last-seen number instantly.
+   The actual cloud snapshot (see cloudsync-ready below) corrects it a moment
+   later if anything changed elsewhere in the meantime — accepted trade-off,
+   this is a display cache only, never the source of truth for a real write. */
+const CLOUD_CACHE_KEY='bjbox:lastKnownState';
+function readCachedCloudState(){
+  try{
+    const raw=localStorage.getItem(CLOUD_CACHE_KEY);
+    return raw?JSON.parse(raw):null;
+  }catch(e){return null;} // private browsing / storage disabled — just skip the cache
+}
+const _cachedState=readCachedCloudState();
+
+let bankroll=(_cachedState&&typeof _cachedState.bankroll==='number')?_cachedState.bankroll:1000,startBR=1000,shoe=[],state="betting";
+let cloudRemoveAds=_cachedState?.removeAds||false,cloudVipUntil=_cachedState?.vipUntil||0,cloudCoinsMerged=0;
 let cloudSyncedOnce=false; // false until the FIRST cloud snapshot lands this page load — see cloudsync-ready below
+let roundStartBankroll=0; // bankroll snapshot taken at the top of startRound() — endCleanup() diffs against this
 
 const DAILY_BONUS_LADDER=[500,750,1000,1250,1500,1750,2000];
 let dailyBonusPopupShown=false;
@@ -542,6 +558,7 @@ function enterGame(tbl){
 
 $('backBtn').addEventListener('click',()=>{
   if(state!=="betting")return;
+  window.CloudSync?.flushPendingHandSync?.(); // don't leave <5 rounds sitting unsynced
   $('game').classList.remove('show');
   $('lobby').classList.remove('hide');
   $('lobbyBal').textContent=fmt(bankroll);
@@ -871,6 +888,10 @@ function startRound(){
   if(circles.every(c=>c.bet<minBet&&c.bet>0)){showToast('Min bet '+fmt(minBet));return;}
 
   state="dealing";
+  // Snapshot bankroll BEFORE dealing — endCleanup() diffs the final bankroll
+  // against this to get the round's net delta (covers splits/doubles/surrender
+  // for free, since those are just more bankroll mutations between now and then).
+  roundStartBankroll=bankroll;
   $('dealWrap').classList.add('hidden');
   $('betBar').classList.add('hidden');
   $('circleZone').classList.add('hidden');
@@ -1622,8 +1643,27 @@ function finishRound(){
   setTimeout(()=>revealNext(0), 600);
 }
 
+/* total money actually at risk this round — base bets + any split/double
+   additions (their final post-double/split amounts are already reflected
+   in .bet by the time a round ends) + insurance side bet. */
+function computeRoundWagered(){
+  let w=insuranceBet||0;
+  if(splitHands){
+    w+=splitHands[0].bet+splitHands[1].bet;
+  } else {
+    pcHands.forEach(hand=>{
+      if(hand.split){hand.split.forEach(sub=>w+=sub.bet);}
+      else{w+=hand.bet;}
+    });
+  }
+  return w;
+}
 function endCleanup(){
   updateUI();
+  // net change for this exact round, whichever path got us here (normal
+  // resolution, split reveal, or single-hand surrender all call endCleanup()
+  // as their one shared exit) — batched and sent to the server every 5 rounds.
+  window.CloudSync?.recordHandForSync?.(bankroll-roundStartBankroll, computeRoundWagered());
   setTimeout(()=>{state="betting";resetTable();},2400);
 }
 
