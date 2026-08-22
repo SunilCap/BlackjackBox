@@ -98,6 +98,7 @@ function init(onUpdate) {
   // If we just came back from a Google redirect sign-in, handle it here —
   // this fires on the page load right after Google sends the player back.
   getRedirectResult(auth).then((result) => {
+    console.log('[link] getRedirectResult ->', result ? `success, uid=${result.user.uid}` : 'null (no pending redirect detected)');
     if (!result) return; // normal load, not a redirect return
     const label = result.user.displayName || result.user.email || 'Google account';
     window.dispatchEvent(new CustomEvent('account-linked', { detail: { restored: false, label } }));
@@ -140,6 +141,7 @@ function init(onUpdate) {
     }
     currentUid = user.uid;
     resolveAuthReady(); // safe to call more than once — a Promise only ever resolves the first time
+    console.log('[link] auth resolved, uid=', user.uid, 'linked=', user.providerData.length > 0, 'providers=', user.providerData.map(p => p.providerId));
 
     // make sure a user doc exists (first run)
     try {
@@ -154,6 +156,7 @@ function init(onUpdate) {
     try {
       await httpsCallable(functions, "claimSession")({deviceId});
       sessionClaimed = true;
+      console.log('[session] claimed as device', deviceId);
     } catch (err) {
       console.error("claimSession failed", err);
     }
@@ -168,6 +171,7 @@ function init(onUpdate) {
         // it before us, which isn't a real supersession, just us not having
         // claimed yet.
         if (sessionClaimed && latestUserDoc.activeDeviceId && latestUserDoc.activeDeviceId !== deviceId) {
+          console.warn('[session] superseded — doc now claimed by', latestUserDoc.activeDeviceId, 'we are', deviceId);
           window.dispatchEvent(new CustomEvent('session-superseded'));
         }
         onUpdateCallback?.(latestUserDoc);
