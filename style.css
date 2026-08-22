@@ -52,6 +52,9 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   position:absolute;inset:0;z-index:100;
   display:flex;flex-direction:column;
   transition:opacity .4s,transform .4s;
+  padding-bottom:98px; /* reserves the .lobby-bottom bar's height (12px+56px+30px)
+    now that it's absolutely positioned rather than in flow — keeps the
+    carousel's flex:1 from expanding underneath it */
 }
 #lobby.hide{opacity:0;transform:scale(1.06);pointer-events:none;}
 
@@ -214,9 +217,11 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .dot.active{width:26px;border-radius:5px;background:#fff;}
 
-/* bottom icon bar */
+/* bottom icon bar — pinned to the bottom of #lobby's fixed frame (rather than
+   sitting in normal document flow) so it can never be pushed around by the
+   daily-bonus banner, an ad, or anything else above it changing height. */
 .lobby-bottom{
-  position:relative;z-index:2;
+  position:absolute;left:0;right:0;bottom:0;z-index:2;
   display:flex;justify-content:space-around;align-items:center;
   padding:12px 20px 30px;
 }
