@@ -247,6 +247,7 @@ window.addEventListener('cloudsync-ready',()=>{
       bankroll=cloudState.bankroll||0;
       cloudCoinsMerged=cloudState.bankroll||0;
       updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby();
+      window.dispatchEvent(new Event('cloud-data-ready')); // loading screen waits on this too — see preloadAssets()
     } else {
       // Live update during this same session (e.g. a purchase completing,
       // or claimDailyBonusFlow's own grant echoing back) — only fold in the
@@ -386,6 +387,11 @@ window.addEventListener('account-linked',(e)=>{
 });
 window.addEventListener('account-link-failed',(e)=>{
   showToast(e.detail.message||'Could not sign in — try again');
+});
+window.addEventListener('session-superseded',()=>{
+  if($('sessionLockOverlay').classList.contains('show'))return; // only lock once
+  window.CloudSync?.flushPendingHandSync?.(); // save whatever legitimately happened before the kick
+  $('sessionLockOverlay').classList.add('show');
 });
 
 $('accountEmailLink')?.addEventListener('click',()=>{
@@ -2009,7 +2015,12 @@ $('pwaInstallBtn').addEventListener('click', async () => {
   deferredPrompt = null;
 });
 
-/* ── LOADING SCREEN: preload real assets, then reveal ── */
+/* ── LOADING SCREEN: preload real assets AND wait for the first real cloud
+   snapshot, then reveal — this is what eliminates the "flash of stale/
+   default bankroll" entirely, rather than just softening it with the
+   localStorage cache. A hard timeout backstops it: if Firebase is slow,
+   blocked, or the player's offline, don't hang the loading screen forever —
+   reveal anyway using whatever's cached/default, same as before this change. */
 (function preloadAssets(){
   const urls=[
     'img/card-back.png','img/foil-pack.png',
@@ -2020,23 +2031,36 @@ $('pwaInstallBtn').addEventListener('click', async () => {
   ];
   const fill=$('lsFill'),pct=$('lsPct'),screen=$('loadingScreen');
   const total=urls.length;
-  let loaded=0;
+  let loaded=0,assetsReady=(total===0),cloudReady=false,revealed=false;
+
+  function reveal(){
+    if(revealed)return;
+    revealed=true;
+    setTimeout(()=>{if(screen)screen.classList.add('hide');},250);
+  }
+  function maybeReveal(){
+    if(assetsReady&&cloudReady)reveal();
+  }
   function tick(){
     loaded++;
     const p=Math.round(loaded/total*100);
     if(fill)fill.style.width=p+'%';
     if(pct)pct.textContent=p+'%';
-    if(loaded>=total){
-      setTimeout(()=>{if(screen)screen.classList.add('hide');},250);
-    }
+    if(loaded>=total){assetsReady=true;maybeReveal();}
   }
-  if(total===0){if(screen)screen.classList.add('hide');return;}
+
+  if(total===0)maybeReveal();
   urls.forEach(src=>{
     const img=new Image();
     img.onload=tick;
     img.onerror=tick; // never let a missing/blocked asset hang the app
     img.src=src;
   });
+
+  window.addEventListener('cloud-data-ready',()=>{cloudReady=true;maybeReveal();},{once:true});
+  // Backstop: offline, Firebase blocked/slow, or cloud-sync.js itself failed
+  // to load — don't strand the player on the loading screen indefinitely.
+  setTimeout(()=>{cloudReady=true;maybeReveal();},6000);
 })();
 
 /* ── prevent double-tap-to-zoom ──

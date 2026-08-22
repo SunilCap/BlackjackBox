@@ -33,6 +33,34 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
+/**
+ * Single-active-session enforcement: "you're logged in on another device."
+ *
+ * deviceId is persisted in localStorage so it's stable across reloads/tabs
+ * on the SAME browser (two tabs on one laptop won't kick each other) but
+ * unique per actual device/browser. On sign-in this device "claims" the
+ * session server-side; if another device claims it afterward, THIS
+ * device's own live Firestore listener sees the mismatch and fires
+ * 'session-superseded' — game.js listens for that and freezes play.
+ */
+const DEVICE_ID_KEY = 'bjbox:deviceId';
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch (e) {
+    // storage unavailable — fall back to a per-load id (session enforcement
+    // just won't survive a reload on this browser, acceptable degradation)
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+const deviceId = getDeviceId();
+let sessionClaimed = false; // true once OUR OWN claim has round-tripped — see onSnapshot below
+
 const CLOUD_CACHE_KEY = 'bjbox:lastKnownState'; // must match the key game.js reads on load
 function cacheStateLocally(state) {
   try {
@@ -120,11 +148,28 @@ function init(onUpdate) {
       console.error("ensureUserDoc failed", err);
     }
 
+    // claim this device as the active session — any OTHER device watching
+    // this same doc will see activeDeviceId change and know it's been
+    // superseded (see the mismatch check below).
+    try {
+      await httpsCallable(functions, "claimSession")({deviceId});
+      sessionClaimed = true;
+    } catch (err) {
+      console.error("claimSession failed", err);
+    }
+
     // live-sync: fires immediately, then on every change (e.g. after a purchase)
     onSnapshot(doc(db, "users", currentUid), (snap) => {
       if (snap.exists()) {
         latestUserDoc = snap.data();
         cacheStateLocally(latestUserDoc);
+        // Only start comparing AFTER our own claim has round-tripped — the
+        // very first snapshot on page load can reflect whatever device had
+        // it before us, which isn't a real supersession, just us not having
+        // claimed yet.
+        if (sessionClaimed && latestUserDoc.activeDeviceId && latestUserDoc.activeDeviceId !== deviceId) {
+          window.dispatchEvent(new CustomEvent('session-superseded'));
+        }
         onUpdateCallback?.(latestUserDoc);
       }
     });
