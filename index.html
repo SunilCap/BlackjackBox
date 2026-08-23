@@ -141,7 +141,7 @@
   <button class="pwa-install-btn" id="pwaInstallBtn">
     <span>📲</span> Add to Home Screen
   </button>
-  <div class="version-badge" id="versionBadge">v1.6.0</div>
+  <div class="version-badge" id="versionBadge">v1.6.1</div>
 
   <div class="lobby-bottom">
     <button class="lb-btn has-img" id="musicBtn"><img src="img/icon-music.png" alt="Music"></button>
@@ -530,8 +530,18 @@
     <h2 class="db-title">Out of Coins!</h2>
     <div class="ooc-desc" id="oocDesc">You don't have enough to keep playing here.</div>
     <button class="db-claim-btn" id="oocStoreBtn">🛒 Visit Store</button>
-    <button class="ooc-secondary-btn" id="oocBailoutBtn">🏠 Back to Lobby (+100 Free)</button>
-    <button class="ooc-tertiary-btn" id="oocAdBtn">🎬 Watch Ad (+250)</button>
+    <button class="ooc-secondary-btn" id="oocLobbyBtn">🏠 Back to Lobby</button>
+  </div>
+</div>
+
+<div id="lobbyClaimModal">
+  <div class="db-inner">
+    <div class="db-icon">🎁</div>
+    <h2 class="db-title">Need a Top-Up?</h2>
+    <div class="ooc-desc">Grab a few free chips to get back to the table.</div>
+    <button class="ooc-secondary-btn" id="lcClaimBtn">🏠 Claim 100 Free Chips</button>
+    <button class="ooc-tertiary-btn" id="lcAdBtn">🎬 Watch Ad for +250</button>
+    <button class="db-skip-btn" id="lcCloseBtn">Continue</button>
   </div>
 </div>
 

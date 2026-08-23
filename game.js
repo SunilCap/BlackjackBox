@@ -605,21 +605,45 @@ function backToLobbyFromModal(){
   renderLobby();
 }
 
+let storeOpenedFromOOC=false; // tells the Store's back button whether to return to the OOC popup instead of the lobby
+
 function showOutOfCoinsModal(){
   const modal=$('outOfCoinsModal');
   $('oocDesc').textContent=`You don't have enough to keep playing at ${activeTable?.name||'this table'}.`;
   modal.classList.add('show');
+
+  const storeBtn=$('oocStoreBtn'),lobbyBtn=$('oocLobbyBtn');
+  const onStore=()=>{ modal.classList.remove('show'); storeOpenedFromOOC=true; $('storeOverlay').classList.add('show'); cleanup(); };
+  const onLobby=()=>{
+    modal.classList.remove('show');
+    backToLobbyFromModal();
+    showLobbyClaimModal(); // this is the ONLY place the free-top-up/ad popup appears — landing here specifically from OOC's Back to Lobby
+    cleanup();
+  };
+  function cleanup(){ storeBtn.removeEventListener('click',onStore); lobbyBtn.removeEventListener('click',onLobby); }
+  storeBtn.addEventListener('click',onStore);
+  lobbyBtn.addEventListener('click',onLobby);
+}
+
+/**
+ * The actual claiming step — only ever opened right after OOC's "Back to
+ * Lobby" button. Deliberately stays open after either action so the player
+ * can do both the free top-up AND the ad in the same visit; a "Continue"
+ * button lets them dismiss it whenever they're done. Every successful
+ * claim calls renderLobby() so any table that's now affordable stops
+ * showing as locked immediately, without needing a manual refresh.
+ */
+function showLobbyClaimModal(){
+  const modal=$('lobbyClaimModal');
+  modal.classList.add('show');
   refreshBailoutButton();
 
-  const storeBtn=$('oocStoreBtn'),bailoutBtn=$('oocBailoutBtn'),adBtn=$('oocAdBtn');
-  const onStore=()=>{ modal.classList.remove('show'); backToLobbyFromModal(); $('storeOverlay').classList.add('show'); cleanup(); };
-  const onBailout=async()=>{
-    bailoutBtn.disabled=true;
+  const claimBtn=$('lcClaimBtn'),adBtn=$('lcAdBtn'),closeBtn=$('lcCloseBtn');
+  const onClaim=async()=>{
+    claimBtn.disabled=true;
     try{
       const result=await CloudSync.claimZeroBailout();
       if(!result.ok){
-        // shouldn't normally happen (button is pre-disabled while locked),
-        // but the server is the real authority — reflect what it says
         showToast('Free top-ups used up — try an ad instead');
         bailoutLockoutUntil=result.lockoutUntil||bailoutLockoutUntil;
         refreshBailoutButton();
@@ -628,37 +652,29 @@ function showOutOfCoinsModal(){
       bankroll+=result.granted;
       cloudCoinsMerged=result.bankroll;
       bailoutLockoutUntil=result.lockoutUntil||0;
-      updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby();
-      showToast('+'+fmt(result.granted)+' chips — back to the lobby!');
-      modal.classList.remove('show');
-      backToLobbyFromModal();
-      cleanup();
+      updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby(); // re-check every table's locked state now
+      showToast('+'+fmt(result.granted)+' chips!');
+      refreshBailoutButton();
     }catch(err){
       console.error('claimZeroBailout failed',err);
       showToast('Could not claim — try again');
-      bailoutBtn.disabled=false;
+      claimBtn.disabled=false;
     }
   };
   const onAd=()=>{
     showRewardedAd('zero_bailout',()=>{
-      modal.classList.remove('show');
-      // if the +250 is now enough to keep playing here, let them continue;
-      // otherwise fall back through the same check (may suggest a table, or reopen this)
-      checkOutOfCoins();
-      if(!$('outOfCoinsModal').classList.contains('show')&&!$('switchTableModal').classList.contains('show')){
-        // fully resolved — nothing left to prompt, player can just keep playing
-      }
-      cleanup();
+      renderLobby(); // re-check every table's locked state now the ad reward landed
     });
   };
+  const onClose=()=>{ modal.classList.remove('show'); cleanup(); };
   function cleanup(){
-    storeBtn.removeEventListener('click',onStore);
-    bailoutBtn.removeEventListener('click',onBailout);
+    claimBtn.removeEventListener('click',onClaim);
     adBtn.removeEventListener('click',onAd);
+    closeBtn.removeEventListener('click',onClose);
   }
-  storeBtn.addEventListener('click',onStore);
-  bailoutBtn.addEventListener('click',onBailout);
+  claimBtn.addEventListener('click',onClaim);
   adBtn.addEventListener('click',onAd);
+  closeBtn.addEventListener('click',onClose);
 }
 
 /* server is the real authority on lockout state — this local copy is only
@@ -666,7 +682,7 @@ function showOutOfCoinsModal(){
    from every claimZeroBailout response */
 let bailoutLockoutUntil=0;
 function refreshBailoutButton(){
-  const btn=$('oocBailoutBtn');
+  const btn=$('lcClaimBtn');
   if(!btn)return;
   const now=Date.now();
   if(bailoutLockoutUntil>now){
@@ -675,7 +691,7 @@ function refreshBailoutButton(){
     btn.textContent=`🏠 Free top-up used — back in ~${mins} min`;
   }else{
     btn.disabled=false;
-    btn.textContent='🏠 Back to Lobby (+100 Free)';
+    btn.textContent='🏠 Claim 100 Free Chips';
   }
 }
 
@@ -957,7 +973,13 @@ $('statsResetBtn').addEventListener('click',()=>{
 
 /* ── STORE OVERLAY ── */
 $('storeBtn').addEventListener('click',()=>$('storeOverlay').classList.add('show'));
-$('storeBack').addEventListener('click',()=>$('storeOverlay').classList.remove('show'));
+$('storeBack').addEventListener('click',()=>{
+  $('storeOverlay').classList.remove('show');
+  if(storeOpenedFromOOC){
+    storeOpenedFromOOC=false;
+    $('outOfCoinsModal').classList.add('show');
+  }
+});
 
 document.querySelectorAll('.iap-buy,.sf-price').forEach(btn=>{
   if(btn.disabled)return; // "coming soon" items — nothing to wire up yet

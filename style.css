@@ -678,14 +678,14 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
    .db-claim-btn/.db-skip-btn from the daily bonus modal above for a
    consistent look, just two new overlays + two new button styles.
 ══════════════════════════════════════════ */
-#outOfCoinsModal,#switchTableModal{
+#outOfCoinsModal,#switchTableModal,#lobbyClaimModal{
   position:absolute;inset:0;z-index:220;
   background:rgba(0,0,0,.82);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;
   transition:opacity .3s;
 }
-#outOfCoinsModal.show,#switchTableModal.show{opacity:1;pointer-events:all;}
+#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show{opacity:1;pointer-events:all;}
 .ooc-desc{color:rgba(244,236,216,.75);font-size:14px;line-height:1.5;margin-bottom:20px;}
 .ooc-secondary-btn{
   width:100%;padding:13px;border-radius:14px;
