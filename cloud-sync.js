@@ -72,6 +72,7 @@ function cacheStateLocally(state) {
 }
 
 let currentUid = null;
+let unsubscribeSnapshot = null; // tears down the PREVIOUS identity's listener before attaching a new one
 let latestUserDoc = { bankroll: 1000, removeAds: false, vipUntil: 0, unlockedTables: [] };
 let onUpdateCallback = null;
 
@@ -88,9 +89,17 @@ const authReady = new Promise(resolve => { resolveAuthReady = resolve; });
  * for cross-device sync is a later, optional step) and starts listening for
  * live bankroll/purchase updates.
  *
- * @param {(data: {bankroll:number, removeAds:boolean, vipUntil:number, unlockedTables:string[]}) => void} onUpdate
+ * @param {(data: {bankroll:number, removeAds:boolean, vipUntil:number, unlockedTables:string[]}, hardReset: boolean) => void} onUpdate
  *   called immediately with cached data, then again every time Firestore
  *   data changes (e.g. right after a purchase is granted server-side).
+ *   `hardReset` is true only on the FIRST call for a given identity — i.e.
+ *   the initial page-load sync, OR right after a restore-login switches
+ *   this tab to a different, pre-existing account. The caller should treat
+ *   that case as authoritative (SET local state from it) rather than
+ *   merging a delta, since there's no "previous local state" worth
+ *   protecting in either of those cases. `hardReset` is false for every
+ *   subsequent live update on that SAME identity (a purchase completing, a
+ *   daily bonus granted, etc.) — those should merge, not overwrite.
  */
 function init(onUpdate) {
   onUpdateCallback = onUpdate;
@@ -100,9 +109,28 @@ function init(onUpdate) {
       await signInAnonymously(auth).catch(err => console.error("Sign-in failed", err));
       return;
     }
+
+    // Is this the SAME identity we already have a live listener running for
+    // (e.g. Firebase re-firing onAuthStateChanged on a routine token
+    // refresh), or a genuinely different one (first-ever load, or a
+    // restore-login switching from this device's anonymous account to a
+    // different, pre-existing account)? Only the latter needs any of the
+    // work below — re-running it for a same-identity refire would tear down
+    // and rebuild a perfectly good listener for no reason.
+    const isNewIdentity = user.uid !== currentUid || !unsubscribeSnapshot;
     currentUid = user.uid;
     resolveAuthReady(); // safe to call more than once — a Promise only ever resolves the first time
     console.log('[link] auth resolved, uid=', user.uid, 'linked=', user.providerData.length > 0, 'providers=', user.providerData.map(p => p.providerId));
+    if (!isNewIdentity) return;
+
+    // Stop listening to the PREVIOUS identity's doc before doing anything
+    // else. Without this, a restore-login (switching from this device's
+    // anonymous account to a different, pre-existing higher-value account)
+    // could leave two live listeners running at once — the old anonymous
+    // doc's and the new real account's — both able to fire and race each
+    // other over the same local `bankroll` variable.
+    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    sessionClaimed = false; // must re-claim + round-trip for THIS identity before comparing session state again
 
     // make sure a user doc exists (first run)
     try {
@@ -123,7 +151,8 @@ function init(onUpdate) {
     }
 
     // live-sync: fires immediately, then on every change (e.g. after a purchase)
-    onSnapshot(doc(db, "users", currentUid), (snap) => {
+    let firstSnapshotForThisIdentity = true; // → tells the caller "this is a fresh identity, treat as authoritative" vs "live update, merge deltas"
+    unsubscribeSnapshot = onSnapshot(doc(db, "users", currentUid), (snap) => {
       if (snap.exists()) {
         latestUserDoc = snap.data();
         cacheStateLocally(latestUserDoc);
@@ -135,7 +164,9 @@ function init(onUpdate) {
           console.warn('[session] superseded — doc now claimed by', latestUserDoc.activeDeviceId, 'we are', deviceId);
           window.dispatchEvent(new CustomEvent('session-superseded'));
         }
-        onUpdateCallback?.(latestUserDoc);
+        const hardReset = firstSnapshotForThisIdentity;
+        firstSnapshotForThisIdentity = false;
+        onUpdateCallback?.(latestUserDoc, hardReset);
       }
     });
   });

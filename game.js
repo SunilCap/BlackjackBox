@@ -229,30 +229,35 @@ const _cachedState=readCachedCloudState();
 
 let bankroll=(_cachedState&&typeof _cachedState.bankroll==='number')?_cachedState.bankroll:1000,startBR=1000,shoe=[],state="betting";
 let cloudRemoveAds=_cachedState?.removeAds||false,cloudVipUntil=_cachedState?.vipUntil||0,cloudCoinsMerged=0;
-let cloudSyncedOnce=false; // false until the FIRST cloud snapshot lands this page load — see cloudsync-ready below
 let roundStartBankroll=0; // bankroll snapshot taken at the top of startRound() — endCleanup() diffs against this
 
 const DAILY_BONUS_LADDER=[500,750,1000,1250,1500,1750,2000];
 let dailyBonusPopupShown=false;
 
 window.addEventListener('cloudsync-ready',()=>{
-  CloudSync.init((cloudState)=>{
-    if(!cloudSyncedOnce){
-      // First cloud snapshot after this page load: the local `bankroll` var
-      // is just today's fresh-JS-default (1000), it has no real winnings to
-      // protect yet, so the cloud total is authoritative — SET, don't add.
-      // (Adding here was the bug: it double-counted the entire existing
-      // cloud bankroll on top of the local default on every single reload.)
-      cloudSyncedOnce=true;
+  CloudSync.init((cloudState,hardReset)=>{
+    if(hardReset){
+      // Either the very first cloud snapshot after this page load (local
+      // `bankroll` is just today's fresh-JS-default, nothing local worth
+      // protecting), OR a restore-login just switched this tab to a
+      // DIFFERENT, pre-existing account (e.g. signing in with an email that
+      // already had its own higher bankroll elsewhere) — cloud-sync.js
+      // tells us which case via `hardReset` since it's the one that
+      // actually knows whether the identity changed. Either way: the cloud
+      // value is authoritative, SET don't merge. Running a restore through
+      // the delta-merge math below was the bug — it would blend this
+      // device's local progress into the account being signed into instead
+      // of that account's own (likely higher) progress simply winning.
       bankroll=cloudState.bankroll||0;
       cloudCoinsMerged=cloudState.bankroll||0;
       updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby();
       window.dispatchEvent(new Event('cloud-data-ready')); // loading screen waits on this too — see preloadAssets()
     } else {
-      // Live update during this same session (e.g. a purchase completing,
-      // or claimDailyBonusFlow's own grant echoing back) — only fold in the
-      // NEW amount since we last merged, so in-session hand wins/losses
-      // (which stay local-only) aren't clobbered.
+      // Live update during this same session, same identity throughout
+      // (e.g. a purchase completing, or claimDailyBonusFlow's own grant
+      // echoing back) — only fold in the NEW amount since we last merged,
+      // so in-session hand wins/losses (which stay local-only) aren't
+      // clobbered.
       const newlyPurchased=(cloudState.bankroll||0)-cloudCoinsMerged;
       if(newlyPurchased>0){
         bankroll+=newlyPurchased;
