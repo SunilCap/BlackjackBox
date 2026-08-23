@@ -242,6 +242,7 @@ let dailyBonusPopupShown=false;
 
 window.addEventListener('cloudsync-ready',()=>{
   CloudSync.init((cloudState,hardReset)=>{
+    bailoutLockoutUntil=cloudState.bailoutLockoutUntil||0; // plain read-through, correct either way
     if(hardReset){
       // Either the very first cloud snapshot after this page load (local
       // `bankroll` is just today's fresh-JS-default, nothing local worth
@@ -474,7 +475,7 @@ function renderLobby(){
     <button class="watch-ad-btn${locked?'':' hidden-slot'}" id="watchAdBtn">🎬 Watch Ad for ${fmt(500)}</button>
   `;
   const wab=$('watchAdBtn');
-  if(wab)wab.addEventListener('click',()=>{ if(locked)showRewardedAd(); });
+  if(wab)wab.addEventListener('click',()=>{ if(locked)showRewardedAd('locked_table'); });
 
   // dots
   const dotsEl=$('dots');
@@ -568,6 +569,116 @@ if(DEBUG_MODE){
   $('lobbyAdd')?.remove();
 }
 
+/* ── OUT-OF-COINS SAFETY NET ──
+   Checked after every hand resolves (see endCleanup) and when entering a
+   table. If bankroll can't cover this table's minimum bet: prefer
+   suggesting a cheaper table the player CAN already afford over the full
+   store/bailout/ad popup — only fall back to that when truly nothing is
+   affordable. */
+function findAffordableOtherTable(){
+  return TABLES.filter(t=>t!==activeTable&&bankroll>=t.minStack)
+    .sort((a,b)=>a.minStack-b.minStack)[0]||null;
+}
+function checkOutOfCoins(){
+  if(!activeTable||bankroll>=activeTable.minBet)return; // can still place a bet — nothing to do
+  const alt=findAffordableOtherTable();
+  if(alt)showSwitchTableModal(alt);
+  else showOutOfCoinsModal();
+}
+
+function showSwitchTableModal(alt){
+  $('stDesc').textContent=`${activeTable.name} needs ${fmt(activeTable.minStack)}+ to keep playing, but ${alt.name} only needs ${fmt(alt.minStack)} — you can afford that one.`;
+  $('switchTableModal').classList.add('show');
+  const switchBtn=$('stSwitchBtn'),lobbyBtn=$('stLobbyBtn');
+  const onSwitch=()=>{ $('switchTableModal').classList.remove('show'); enterGame(alt); cleanup(); };
+  const onLobby=()=>{ $('switchTableModal').classList.remove('show'); backToLobbyFromModal(); cleanup(); };
+  function cleanup(){ switchBtn.removeEventListener('click',onSwitch); lobbyBtn.removeEventListener('click',onLobby); }
+  switchBtn.addEventListener('click',onSwitch);
+  lobbyBtn.addEventListener('click',onLobby);
+}
+
+function backToLobbyFromModal(){
+  window.CloudSync?.flushPendingHandSync?.();
+  $('game').classList.remove('show');
+  $('lobby').classList.remove('hide');
+  $('lobbyBal').textContent=fmt(bankroll);
+  renderLobby();
+}
+
+function showOutOfCoinsModal(){
+  const modal=$('outOfCoinsModal');
+  $('oocDesc').textContent=`You don't have enough to keep playing at ${activeTable?.name||'this table'}.`;
+  modal.classList.add('show');
+  refreshBailoutButton();
+
+  const storeBtn=$('oocStoreBtn'),bailoutBtn=$('oocBailoutBtn'),adBtn=$('oocAdBtn');
+  const onStore=()=>{ modal.classList.remove('show'); backToLobbyFromModal(); $('storeOverlay').classList.add('show'); cleanup(); };
+  const onBailout=async()=>{
+    bailoutBtn.disabled=true;
+    try{
+      const result=await CloudSync.claimZeroBailout();
+      if(!result.ok){
+        // shouldn't normally happen (button is pre-disabled while locked),
+        // but the server is the real authority — reflect what it says
+        showToast('Free top-ups used up — try an ad instead');
+        bailoutLockoutUntil=result.lockoutUntil||bailoutLockoutUntil;
+        refreshBailoutButton();
+        return;
+      }
+      bankroll+=result.granted;
+      cloudCoinsMerged=result.bankroll;
+      bailoutLockoutUntil=result.lockoutUntil||0;
+      updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby();
+      showToast('+'+fmt(result.granted)+' chips — back to the lobby!');
+      modal.classList.remove('show');
+      backToLobbyFromModal();
+      cleanup();
+    }catch(err){
+      console.error('claimZeroBailout failed',err);
+      showToast('Could not claim — try again');
+      bailoutBtn.disabled=false;
+    }
+  };
+  const onAd=()=>{
+    showRewardedAd('zero_bailout',()=>{
+      modal.classList.remove('show');
+      // if the +250 is now enough to keep playing here, let them continue;
+      // otherwise fall back through the same check (may suggest a table, or reopen this)
+      checkOutOfCoins();
+      if(!$('outOfCoinsModal').classList.contains('show')&&!$('switchTableModal').classList.contains('show')){
+        // fully resolved — nothing left to prompt, player can just keep playing
+      }
+      cleanup();
+    });
+  };
+  function cleanup(){
+    storeBtn.removeEventListener('click',onStore);
+    bailoutBtn.removeEventListener('click',onBailout);
+    adBtn.removeEventListener('click',onAd);
+  }
+  storeBtn.addEventListener('click',onStore);
+  bailoutBtn.addEventListener('click',onBailout);
+  adBtn.addEventListener('click',onAd);
+}
+
+/* server is the real authority on lockout state — this local copy is only
+   for disabling the button promptly without an extra round trip; refreshed
+   from every claimZeroBailout response */
+let bailoutLockoutUntil=0;
+function refreshBailoutButton(){
+  const btn=$('oocBailoutBtn');
+  if(!btn)return;
+  const now=Date.now();
+  if(bailoutLockoutUntil>now){
+    const mins=Math.ceil((bailoutLockoutUntil-now)/60000);
+    btn.disabled=true;
+    btn.textContent=`🏠 Free top-up used — back in ~${mins} min`;
+  }else{
+    btn.disabled=false;
+    btn.textContent='🏠 Back to Lobby (+100 Free)';
+  }
+}
+
 function enterGame(tbl){
   activeTable=tbl;
   $('rulesModal').classList.remove('show');
@@ -576,6 +687,7 @@ function enterGame(tbl){
   resetTable();
   $('lobby').classList.add('hide');
   $('game').classList.add('show');
+  checkOutOfCoins(); // defensive — shouldn't normally trigger given lobby's minStack gating, but cheap to confirm
 }
 
 $('backBtn').addEventListener('click',()=>{
@@ -597,17 +709,33 @@ $('backBtn').addEventListener('click',()=>{
 });
 
 /* ── REWARDED AD: bonus chips when locked out of a table ── */
-function showRewardedAd(){
+/**
+ * Watch a rewarded ad for coins — used by BOTH the lobby's "locked table"
+ * button and the new zero-coins popup's "Watch Ad" button.
+ * @param {'locked_table'|'zero_bailout'} context — must match a key the
+ *   backend recognizes (see AD_REWARD_AMOUNTS in index.js); the amount is
+ *   never trusted from the client, only looked up server-side from this.
+ * @param {() => void} [onGranted] optional callback once the server has
+ *   actually confirmed and applied the reward (not just "ad finished")
+ */
+function showRewardedAd(context,onGranted){
   if(typeof adBreak!=='function'){showToast('Ads not configured yet');return;}
   adBreak({
     type:'reward',
-    name:'bonus_chips',
+    name:context==='zero_bailout'?'bonus_chips_bailout':'bonus_chips',
     beforeReward:(showAdFn)=>{ showAdFn(); },
-    adViewed:()=>{
-      bankroll+=500;
-      $('lobbyBal').textContent=fmt(bankroll);
-      showToast('+'+fmt(500)+' chips!');
-      renderLobby();
+    adViewed:async()=>{
+      try{
+        const result=await CloudSync.claimAdReward(context);
+        bankroll+=result.granted;
+        cloudCoinsMerged=result.bankroll; // keep in sync so the purchase-merge watcher doesn't ALSO toast this
+        updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby();
+        showToast('+'+fmt(result.granted)+' chips!');
+        onGranted?.();
+      }catch(err){
+        console.error('claimAdReward failed',err);
+        showToast('Could not grant reward — try again');
+      }
     },
     adDismissed:()=>{ showToast('Watch the full ad to earn chips'); },
     adBreakDone:()=>{},
@@ -1693,7 +1821,7 @@ function endCleanup(){
   // resolution, split reveal, or single-hand surrender all call endCleanup()
   // as their one shared exit) — batched and sent to the server every 5 rounds.
   window.CloudSync?.recordHandForSync?.(bankroll-roundStartBankroll, computeRoundWagered());
-  setTimeout(()=>{state="betting";resetTable();},2400);
+  setTimeout(()=>{state="betting";resetTable();checkOutOfCoins();},2400);
 }
 
 /* ══════════════════════════════════════════

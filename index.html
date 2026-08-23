@@ -141,7 +141,7 @@
   <button class="pwa-install-btn" id="pwaInstallBtn">
     <span>📲</span> Add to Home Screen
   </button>
-  <div class="version-badge" id="versionBadge">v1.5.5</div>
+  <div class="version-badge" id="versionBadge">v1.6.0</div>
 
   <div class="lobby-bottom">
     <button class="lb-btn has-img" id="musicBtn"><img src="img/icon-music.png" alt="Music"></button>
@@ -524,6 +524,27 @@
 </div>
 
 <!-- DAILY BONUS MODAL (top-level, same reasoning) -->
+<div id="outOfCoinsModal">
+  <div class="db-inner">
+    <div class="db-icon">💸</div>
+    <h2 class="db-title">Out of Coins!</h2>
+    <div class="ooc-desc" id="oocDesc">You don't have enough to keep playing here.</div>
+    <button class="db-claim-btn" id="oocStoreBtn">🛒 Visit Store</button>
+    <button class="ooc-secondary-btn" id="oocBailoutBtn">🏠 Back to Lobby (+100 Free)</button>
+    <button class="ooc-tertiary-btn" id="oocAdBtn">🎬 Watch Ad (+250)</button>
+  </div>
+</div>
+
+<div id="switchTableModal">
+  <div class="db-inner">
+    <div class="db-icon">🔄</div>
+    <h2 class="db-title">Not Enough for This Table</h2>
+    <div class="ooc-desc" id="stDesc"></div>
+    <button class="db-claim-btn" id="stSwitchBtn">Switch Table</button>
+    <button class="db-skip-btn" id="stLobbyBtn">Back to Lobby instead</button>
+  </div>
+</div>
+
 <div id="dailyBonusModal">
   <div class="db-inner">
     <div class="db-icon">🎁</div>

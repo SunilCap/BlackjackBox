@@ -254,6 +254,33 @@ async function claimDailyBonus() {
 }
 
 /**
+ * Watch-an-ad-for-coins, server-validated. `context` must be one of the
+ * keys the backend recognizes ('locked_table', 'zero_bailout') — the
+ * client names WHICH ad slot was watched, never how much to grant.
+ * Call this only from an ad SDK's "reward earned" callback, never on the
+ * button click itself — otherwise players get coins without watching.
+ * @returns {Promise<{ok:boolean, granted:number, bankroll:number}>}
+ */
+async function claimAdReward(context) {
+  await authReady;
+  const fn = httpsCallable(functions, "claimAdReward");
+  const result = await fn({context});
+  return result.data;
+}
+
+/**
+ * The "out of coins → back to lobby" free top-up. Up to 3 uses, then a
+ * 30-minute lockout (rolling — resets to a fresh 3 once it elapses).
+ * @returns {Promise<{ok:boolean, locked:boolean, granted?:number, bankroll:number, usesRemaining?:number, lockoutUntil?:number}>}
+ */
+async function claimZeroBailout() {
+  await authReady;
+  const fn = httpsCallable(functions, "claimZeroBailout");
+  const result = await fn();
+  return result.data;
+}
+
+/**
  * Client-side ONLY eligibility check, for deciding whether to show the
  * popup/lobby button — purely cosmetic, the server re-checks for real when
  * claimDailyBonus() is actually called, so this being "wrong" for a moment
@@ -457,6 +484,7 @@ window.addEventListener('visibilitychange', () => {
 window.CloudSync = {
   init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable,
   claimDailyBonus, isDailyBonusAvailable, nextDailyBonusDay,
+  claimAdReward, claimZeroBailout,
   linkWithGoogle, linkWithEmail, isAccountLinked, getAccountLabel,
   recordHandForSync, flushPendingHandSync,
 };
