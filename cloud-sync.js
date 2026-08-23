@@ -13,7 +13,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import {
   getAuth, signInAnonymously, onAuthStateChanged,
-  GoogleAuthProvider, linkWithRedirect, getRedirectResult, signInWithCredential,
+  GoogleAuthProvider, linkWithPopup, signInWithCredential,
   EmailAuthProvider, linkWithCredential, signInWithEmailAndPassword,
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
@@ -94,45 +94,6 @@ const authReady = new Promise(resolve => { resolveAuthReady = resolve; });
  */
 function init(onUpdate) {
   onUpdateCallback = onUpdate;
-
-  // If we just came back from a Google redirect sign-in, handle it here —
-  // this fires on the page load right after Google sends the player back.
-  getRedirectResult(auth).then((result) => {
-    console.log('[link] getRedirectResult ->', result ? `success, uid=${result.user.uid}` : 'null (no pending redirect detected)');
-    if (!result) return; // normal load, not a redirect return
-    const label = result.user.displayName || result.user.email || 'Google account';
-    window.dispatchEvent(new CustomEvent('account-linked', { detail: { restored: false, label } }));
-  }).catch(async (err) => {
-    if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
-      // Two distinct cases land here:
-      //  - credential-already-in-use: this Google account was already linked
-      //    to a different (older) account.
-      //  - email-already-in-use: the project's "one account per email"
-      //    setting kicked in because this Google account's email already
-      //    belongs to a DIFFERENT-provider account here (e.g. the player
-      //    earlier used "or use email" with the same address).
-      // Either way, the fix is the same: sign into that existing account
-      // instead of the current anonymous one, restoring its data. Firebase
-      // attaches the Google credential to both error types so this works
-      // for each.
-      try {
-        const credential = GoogleAuthProvider.credentialFromError(err);
-        if (!credential) throw err; // no credential attached — can't auto-recover
-        const result = await signInWithCredential(auth, credential);
-        const label = result.user.displayName || result.user.email || 'Google account';
-        window.dispatchEvent(new CustomEvent('account-linked', { detail: { restored: true, label } }));
-      } catch (err2) {
-        console.error('Google redirect recovery failed', err2);
-        const message = err.code === 'auth/email-already-in-use'
-          ? 'That Google account\'s email is already registered — sign in with email/password instead, then link Google from there.'
-          : 'Could not sign in — try again';
-        window.dispatchEvent(new CustomEvent('account-link-failed', { detail: { message } }));
-      }
-    } else if (err.code) {
-      console.error('Google redirect sign-in failed', err);
-      window.dispatchEvent(new CustomEvent('account-link-failed', { detail: { message: 'Could not sign in — try again' } }));
-    }
-  });
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -292,26 +253,67 @@ function nextDailyBonusDay() {
  * "Protect your purchases" — upgrades the current anonymous account to a
  * real Google-linked one, keeping all existing bankroll/purchases/streak.
  *
- * Uses the REDIRECT flow (full page navigation to Google and back), not a
- * popup — popups are unreliable on mobile browsers and inside PWAs, often
- * getting silently blocked. This means the call below doesn't resolve with
- * a result the way a normal async function would (the page navigates away
- * before that could happen) — instead, listen for a window 'account-linked'
- * (or 'account-link-failed') event, which fires from init() on the page
- * load right after the player comes back from Google.
+ * Uses a POPUP (not the redirect flow this used to use). Redirect requires
+ * surviving a full round trip through a DIFFERENT origin
+ * (blackjack-box-21.firebaseapp.com) and back — modern browsers'
+ * cross-origin storage partitioning has started silently breaking that
+ * round trip (confirmed on both Chrome and Edge here), even though
+ * Authorized Domains are configured correctly. A popup avoids the problem
+ * entirely since the opener tab never navigates away and the result comes
+ * back via postMessage instead.
  *
- * If this Google account was already used before (e.g. the player is on a
- * new device/browser and had previously linked there), Firebase can't
- * "link" it a second time — instead we sign into THAT existing account,
- * which means whatever this current anonymous session had gets replaced by
- * the older, already-linked account's data. That's the correct behavior
- * for "restore my account," just worth knowing it's not a merge. The
- * 'account-linked' event's `restored` field tells you which happened.
+ * Trade-off, deliberately accepted for now: popups are unreliable on mobile
+ * browsers and inside installed PWAs (often silently blocked) — the exact
+ * reason redirect was chosen originally. Revisit with a custom authDomain
+ * (same registrable domain as the app) if/when that becomes available —
+ * that's the fix that works everywhere without this trade-off.
+ *
+ * Dispatches the same 'account-linked' / 'account-link-failed' window
+ * events as before, so game.js's listeners don't need to change — it just
+ * fires them directly here instead of on the next page load.
  */
 async function linkWithGoogle() {
   await authReady;
   const provider = new GoogleAuthProvider();
-  await linkWithRedirect(auth.currentUser, provider); // page navigates away here
+  try {
+    const result = await linkWithPopup(auth.currentUser, provider);
+    const label = result.user.displayName || result.user.email || 'Google account';
+    window.dispatchEvent(new CustomEvent('account-linked', { detail: { restored: false, label } }));
+  } catch (err) {
+    if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
+      // Two distinct cases land here:
+      //  - credential-already-in-use: this Google account was already linked
+      //    to a different (older) account.
+      //  - email-already-in-use: the project's "one account per email"
+      //    setting kicked in because this Google account's email already
+      //    belongs to a DIFFERENT-provider account here (e.g. the player
+      //    earlier used "or use email" with the same address).
+      // Either way, the fix is the same: sign into that existing account
+      // instead of the current anonymous one, restoring its data. Firebase
+      // attaches the Google credential to both error types so this works
+      // for each.
+      try {
+        const credential = GoogleAuthProvider.credentialFromError(err);
+        if (!credential) throw err; // no credential attached — can't auto-recover
+        const result = await signInWithCredential(auth, credential);
+        const label = result.user.displayName || result.user.email || 'Google account';
+        window.dispatchEvent(new CustomEvent('account-linked', { detail: { restored: true, label } }));
+      } catch (err2) {
+        console.error('Google popup recovery failed', err2);
+        const message = err.code === 'auth/email-already-in-use'
+          ? 'That Google account\'s email is already registered — sign in with email/password instead, then link Google from there.'
+          : 'Could not sign in — try again';
+        window.dispatchEvent(new CustomEvent('account-link-failed', { detail: { message } }));
+      }
+    } else if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+      // player closed the popup themselves — not a real failure, no toast needed
+    } else if (err.code === 'auth/popup-blocked') {
+      window.dispatchEvent(new CustomEvent('account-link-failed', { detail: { message: 'Popup was blocked — please allow popups for this site and try again' } }));
+    } else if (err.code) {
+      console.error('Google popup sign-in failed', err);
+      window.dispatchEvent(new CustomEvent('account-link-failed', { detail: { message: 'Could not sign in — try again' } }));
+    }
+  }
 }
 
 /**

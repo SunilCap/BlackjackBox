@@ -363,35 +363,33 @@ function refreshAccountCard(){
 
 $('accountGoogleBtn')?.addEventListener('click',async()=>{
   const btn=$('accountGoogleBtn');
-  btn.textContent='Redirecting…';btn.disabled=true;
+  btn.textContent='Signing in…';btn.disabled=true;
   try{
-    await CloudSync.linkWithGoogle(); // navigates the page away to Google — nothing after this runs
+    await CloudSync.linkWithGoogle(); // resolves in-place now (popup) — no page reload
   }catch(err){
-    console.error('Google redirect failed to start',err);
+    console.error('Google sign-in failed to start',err);
     showToast('Could not start sign-in — try again');
+  }finally{
     btn.textContent='Sign in with Google';btn.disabled=false;
   }
 });
 
-// Fires on the page load right after coming back from Google's redirect flow
-// (handled in cloud-sync.js's init(), via getRedirectResult()).
+// Fires directly from linkWithGoogle()'s popup resolving (or its conflict-recovery
+// path) — no page reload involved, so no need to re-navigate back to the Store,
+// the player never left it.
 window.addEventListener('account-linked',(e)=>{
   refreshAccountCard();
   showToast(e.detail.restored?'Welcome back!':'Account linked!');
-  // the redirect flow fully reloaded the page — bring the player back to
-  // the Store screen they started from, instead of leaving them at the lobby
-  setTimeout(()=>{
-    $('lobby')?.classList.add('hide');
-    $('storeOverlay')?.classList.add('show');
-  },900); // small delay so it doesn't fight with the loading screen fade-out
 });
 window.addEventListener('account-link-failed',(e)=>{
   showToast(e.detail.message||'Could not sign in — try again');
 });
 window.addEventListener('session-superseded',()=>{
-  if($('sessionLockOverlay').classList.contains('show'))return; // only lock once
+  const overlay=$('sessionLockOverlay');
+  if(!overlay){console.error('session-superseded fired but #sessionLockOverlay is missing from the DOM — index.html is likely stale');return;}
+  if(overlay.classList.contains('show'))return; // only lock once
   window.CloudSync?.flushPendingHandSync?.(); // save whatever legitimately happened before the kick
-  $('sessionLockOverlay').classList.add('show');
+  overlay.classList.add('show');
 });
 
 $('accountEmailLink')?.addEventListener('click',()=>{
