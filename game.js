@@ -227,6 +227,12 @@ function readCachedCloudState(){
 }
 const _cachedState=readCachedCloudState();
 
+/* Flip to false before building the Android/iOS store release — hides AND
+   disables the debug "+" coin buttons (lobbyAdd/addBtn). They're pure local
+   test tools (never touch Firestore) left over from before cloud sync
+   existed; harmless for testing but should never ship to real players. */
+const DEBUG_MODE=true;
+
 let bankroll=(_cachedState&&typeof _cachedState.bankroll==='number')?_cachedState.bankroll:1000,startBR=1000,shoe=[],state="betting";
 let cloudRemoveAds=_cachedState?.removeAds||false,cloudVipUntil=_cachedState?.vipUntil||0,cloudCoinsMerged=0;
 let roundStartBankroll=0; // bankroll snapshot taken at the top of startRound() — endCleanup() diffs against this
@@ -553,7 +559,14 @@ $('arrowR').addEventListener('click',()=>{currentTableIdx=(currentTableIdx+1)%TA
     renderLobby();
   },{passive:true});
 })();
-$('lobbyAdd').addEventListener('click',()=>{bankroll+=500;$('lobbyBal').textContent=fmt(bankroll);renderLobby();});
+if(DEBUG_MODE){
+  $('lobbyAdd').addEventListener('click',()=>{
+    if(state!=="betting")return; // never mid-round — keeps a debug top-up from leaking into a round's synced delta
+    bankroll+=500;$('lobbyBal').textContent=fmt(bankroll);renderLobby();
+  });
+}else{
+  $('lobbyAdd')?.remove();
+}
 
 function enterGame(tbl){
   activeTable=tbl;
@@ -793,7 +806,14 @@ function showToast(msg){
   toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1400);
 }
 
-$('addBtn').addEventListener('click',()=>{bankroll+=500;updateUI();$('lobbyBal').textContent=fmt(bankroll);});
+if(DEBUG_MODE){
+  $('addBtn').addEventListener('click',()=>{
+    if(state!=="betting")return; // never mid-round — keeps a debug top-up from leaking into a round's synced delta
+    bankroll+=500;updateUI();$('lobbyBal').textContent=fmt(bankroll);
+  });
+}else{
+  $('addBtn')?.remove();
+}
 
 /* ── STATS OVERLAY ── */
 function openStats(){updateStatsUI();$('statsOverlay').classList.add('show');}
