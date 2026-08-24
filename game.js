@@ -613,7 +613,7 @@ function showOutOfCoinsModal(){
   modal.classList.add('show');
 
   const storeBtn=$('oocStoreBtn'),lobbyBtn=$('oocLobbyBtn');
-  const onStore=()=>{ modal.classList.remove('show'); storeOpenedFromOOC=true; $('storeOverlay').classList.add('show'); cleanup(); };
+  const onStore=()=>{ modal.classList.remove('show'); storeOpenedFromOOC=true; $('storeOverlay').classList.add('show'); }; // no cleanup here — storeBack can reopen this SAME modal, buttons must still work
   const onLobby=()=>{
     modal.classList.remove('show');
     backToLobbyFromModal();
@@ -697,6 +697,7 @@ function refreshBailoutButton(){
 
 function enterGame(tbl){
   activeTable=tbl;
+  currentTableIdx=TABLES.indexOf(tbl); // keep the lobby carousel pointing at whichever table we actually entered — otherwise returning to the lobby (e.g. from OOC) can show a DIFFERENT table's lock status than the one the player cares about
   $('rulesModal').classList.remove('show');
   $('tableStrip').textContent=`${tbl.name} · ${tbl.decks} Decks · Bet $${tbl.minBet.toLocaleString()}–$${tbl.maxBet.toLocaleString()}`;
   updateChipTray(getTableChips(tbl));
