@@ -118,6 +118,10 @@
     🎁 <span id="dbBannerText">Day 1 — Claim $500</span>
   </button>
 
+  <div class="bailout-lock-banner hidden" id="bailoutLockBanner">
+    ⏳ Free top-up in <span id="bailoutLockTimer">--:--</span>
+  </div>
+
   <div class="carousel">
     <button class="arrow left" id="arrowL">&#9664;</button>
     <button class="arrow right" id="arrowR">&#9654;</button>
@@ -141,7 +145,7 @@
   <button class="pwa-install-btn" id="pwaInstallBtn">
     <span>📲</span> Add to Home Screen
   </button>
-  <div class="version-badge" id="versionBadge">v1.6.2</div>
+  <div class="version-badge" id="versionBadge">v1.6.3</div>
 
   <div class="lobby-bottom">
     <button class="lb-btn has-img" id="musicBtn"><img src="img/icon-music.png" alt="Music"></button>
@@ -540,6 +544,7 @@
     <h2 class="db-title">Need a Top-Up?</h2>
     <div class="ooc-desc">Grab a few free chips to get back to the table.</div>
     <button class="ooc-secondary-btn" id="lcClaimBtn">🏠 Claim 100 Free Chips</button>
+    <div class="ooc-hint hidden" id="lcClaimHint"></div>
     <button class="ooc-tertiary-btn" id="lcAdBtn">🎬 Watch Ad for +250</button>
     <button class="db-skip-btn" id="lcCloseBtn">Continue</button>
   </div>

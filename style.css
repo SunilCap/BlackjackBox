@@ -703,6 +703,11 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   transition:transform .08s;
 }
 .ooc-tertiary-btn:active{transform:scale(.96);}
+.ooc-hint{
+  color:rgba(255,179,71,.85);font-size:12px;font-weight:600;
+  margin:-4px 0 10px;font-variant-numeric:tabular-nums;
+}
+.ooc-hint.hidden{display:none;}
 
 /* lobby fallback button — small pill under the balance bar */
 .daily-bonus-banner{
@@ -714,6 +719,15 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .daily-bonus-banner:active{transform:scale(.97);}
 .daily-bonus-banner.hidden{display:none;}
+
+.bailout-lock-banner{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  margin:0 20px 8px;padding:10px 16px;border-radius:14px;
+  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);
+  color:rgba(244,236,216,.75);font-weight:600;font-size:13px;
+}
+.bailout-lock-banner span{color:#ffb347;font-weight:800;font-variant-numeric:tabular-nums;}
+.bailout-lock-banner.hidden{display:none;}
 
 /* rules modal */
 #rulesModal{

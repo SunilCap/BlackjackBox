@@ -243,6 +243,7 @@ let dailyBonusPopupShown=false;
 window.addEventListener('cloudsync-ready',()=>{
   CloudSync.init((cloudState,hardReset)=>{
     bailoutLockoutUntil=cloudState.bailoutLockoutUntil||0; // plain read-through, correct either way
+    updateBailoutUI?.(); // don't wait up to 1s for the next tick — show correct state immediately on load
     if(hardReset){
       // Either the very first cloud snapshot after this page load (local
       // `bankroll` is just today's fresh-JS-default, nothing local worth
@@ -636,7 +637,7 @@ function showOutOfCoinsModal(){
 function showLobbyClaimModal(){
   const modal=$('lobbyClaimModal');
   modal.classList.add('show');
-  refreshBailoutButton();
+  updateBailoutUI();
 
   const claimBtn=$('lcClaimBtn'),adBtn=$('lcAdBtn'),closeBtn=$('lcCloseBtn');
   const onClaim=async()=>{
@@ -646,7 +647,7 @@ function showLobbyClaimModal(){
       if(!result.ok){
         showToast('Free top-ups used up — try an ad instead');
         bailoutLockoutUntil=result.lockoutUntil||bailoutLockoutUntil;
-        refreshBailoutButton();
+        updateBailoutUI();
         return;
       }
       bankroll+=result.granted;
@@ -654,7 +655,7 @@ function showLobbyClaimModal(){
       bailoutLockoutUntil=result.lockoutUntil||0;
       updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby(); // re-check every table's locked state now
       showToast('+'+fmt(result.granted)+' chips!');
-      refreshBailoutButton();
+      updateBailoutUI();
     }catch(err){
       console.error('claimZeroBailout failed',err);
       showToast('Could not claim — try again');
@@ -678,22 +679,39 @@ function showLobbyClaimModal(){
 }
 
 /* server is the real authority on lockout state — this local copy is only
-   for disabling the button promptly without an extra round trip; refreshed
-   from every claimZeroBailout response */
+   for updating the UI promptly without an extra round trip; refreshed from
+   every cloud snapshot AND every claimZeroBailout response */
 let bailoutLockoutUntil=0;
-function refreshBailoutButton(){
-  const btn=$('lcClaimBtn');
-  if(!btn)return;
+
+function fmtCountdown(ms){
+  const totalSec=Math.max(0,Math.ceil(ms/1000));
+  const m=Math.floor(totalSec/60),s=totalSec%60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+/** Drives BOTH the persistent lobby banner and the claim popup's button/hint — single source of truth, called every tick and whenever bailoutLockoutUntil changes. */
+function updateBailoutUI(){
   const now=Date.now();
-  if(bailoutLockoutUntil>now){
-    const mins=Math.ceil((bailoutLockoutUntil-now)/60000);
-    btn.disabled=true;
-    btn.textContent=`🏠 Free top-up used — back in ~${mins} min`;
-  }else{
-    btn.disabled=false;
-    btn.textContent='🏠 Claim 100 Free Chips';
+  const locked=bailoutLockoutUntil>now;
+  const remaining=bailoutLockoutUntil-now;
+
+  const banner=$('bailoutLockBanner'),timerEl=$('bailoutLockTimer');
+  if(banner){
+    banner.classList.toggle('hidden',!locked);
+    if(locked&&timerEl)timerEl.textContent=fmtCountdown(remaining);
+  }
+
+  const claimBtn=$('lcClaimBtn'),hint=$('lcClaimHint');
+  if(claimBtn){
+    claimBtn.disabled=locked;
+    claimBtn.textContent='🏠 Claim 100 Free Chips'; // always the same label now — the countdown lives in the hint below, not the button text
+  }
+  if(hint){
+    hint.classList.toggle('hidden',!locked);
+    if(locked)hint.textContent=`All 3 free top-ups used — next one in ${fmtCountdown(remaining)}`;
   }
 }
+setInterval(updateBailoutUI,1000); // cheap (one timestamp comparison + text update) — safe to just always run
 
 function enterGame(tbl){
   activeTable=tbl;
