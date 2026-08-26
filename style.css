@@ -132,7 +132,6 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   flex:1;position:relative;z-index:2;
   display:flex;align-items:center;justify-content:center;
   flex-direction:column;gap:0;
-  overflow-y:auto;overflow-x:hidden; /* contain overflow here instead of letting it collide with the pinned .lobby-bottom bar below when banners above (daily bonus, bailout lockout) shrink the space available */
 }
 .table-card{
   display:flex;flex-direction:column;align-items:center;
