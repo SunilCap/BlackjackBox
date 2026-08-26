@@ -460,8 +460,17 @@ async function processSyncQueue() {
   try {
     await authReady;
     const fn = httpsCallable(functions, "syncBankrollDelta");
-    await fn({ delta: batch.delta, wagered: batch.wagered, syncToken: batch.token });
+    const result = await fn({ delta: batch.delta, wagered: batch.wagered, syncToken: batch.token });
     syncQueue.shift(); // sent successfully — drop it and try the next one
+    // This exact change is ALREADY reflected in local `bankroll` — it applied
+    // instantly during gameplay, before this network call even started. The
+    // live snapshot listener is about to see this same write land in
+    // Firestore and fire — without this event, game.js's merge logic can't
+    // tell that apart from a genuinely NEW server-side change (a purchase,
+    // daily bonus, etc.) and would add it AGAIN on top. Pass the server's
+    // actual resulting bankroll (not just the delta we sent) so this stays
+    // correct even if the server's anti-cheat clamp adjusted the amount.
+    window.dispatchEvent(new CustomEvent('round-sync-applied', { detail: { resultBankroll: result.data?.bankroll } }));
   } catch (err) {
     console.error("Bankroll sync failed, will retry with the next round", err);
     // leave it at the front of the queue — the next recordHandForSync()

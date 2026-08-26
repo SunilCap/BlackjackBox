@@ -397,6 +397,16 @@ window.addEventListener('account-linked',(e)=>{
 window.addEventListener('account-link-failed',(e)=>{
   showToast(e.detail.message||'Could not sign in — try again');
 });
+// A round-sync batch just landed on the server — its effect is ALREADY
+// baked into local `bankroll` (applied instantly during gameplay, before
+// this even sent). Set cloudCoinsMerged to the server's ACTUAL resulting
+// total (not just our assumed delta — correct even if the server's
+// anti-cheat clamp adjusted the amount) BEFORE the live snapshot listener
+// sees this same write and fires, so that echo computes as "0 new" instead
+// of double-adding a change that already happened locally.
+window.addEventListener('round-sync-applied',(e)=>{
+  if(typeof e.detail?.resultBankroll==='number')cloudCoinsMerged=e.detail.resultBankroll;
+});
 window.addEventListener('session-superseded',()=>{
   const overlay=$('sessionLockOverlay');
   if(!overlay){console.error('session-superseded fired but #sessionLockOverlay is missing from the DOM — index.html is likely stale');return;}
