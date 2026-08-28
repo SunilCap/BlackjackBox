@@ -1091,6 +1091,16 @@ function resetTable(){
   $('betBar').classList.remove('hidden');
   circles=[{bet:0,denom:0},{bet:0,denom:0},{bet:0,denom:0}];
   renderAllCircles();
+  // Snapshot bankroll HERE — the true start of a fresh betting round, before
+  // any chip has been placed. Previously this was captured in startRound()
+  // (on Deal click), but by then dropOnCircle() had already deducted the
+  // bet from `bankroll` while the player was placing chips — so every
+  // round's delta was silently off by the bet amount. That made a bust
+  // sync as a $0 change (bankroll never moved AFTER the already-deducted
+  // bet) and a surrender sync as a small GAIN (the half-bet refund, with
+  // no corresponding debit ever recorded) — real losses that never reached
+  // the server despite succeeding with no errors.
+  roundStartBankroll=bankroll;
   state="betting";updateUI();
 }
 
@@ -1103,10 +1113,9 @@ function startRound(){
   if(circles.every(c=>c.bet<minBet&&c.bet>0)){showToast('Min bet '+fmt(minBet));return;}
 
   state="dealing";
-  // Snapshot bankroll BEFORE dealing — endCleanup() diffs the final bankroll
-  // against this to get the round's net delta (covers splits/doubles/surrender
-  // for free, since those are just more bankroll mutations between now and then).
-  roundStartBankroll=bankroll;
+  // roundStartBankroll is captured in resetTable() now, BEFORE any bet on
+  // this round was placed — NOT here, since by Deal-click time dropOnCircle()
+  // has already deducted every bet from `bankroll`. See resetTable() for why.
   $('dealWrap').classList.add('hidden');
   $('betBar').classList.add('hidden');
   $('circleZone').classList.add('hidden');
