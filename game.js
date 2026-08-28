@@ -397,13 +397,20 @@ window.addEventListener('account-linked',(e)=>{
 window.addEventListener('account-link-failed',(e)=>{
   showToast(e.detail.message||'Could not sign in — try again');
 });
-// A round-sync batch just landed on the server — its effect is ALREADY
-// baked into local `bankroll` (applied instantly during gameplay, before
-// this even sent). Set cloudCoinsMerged to the server's ACTUAL resulting
-// total (not just our assumed delta — correct even if the server's
-// anti-cheat clamp adjusted the amount) BEFORE the live snapshot listener
-// sees this same write and fires, so that echo computes as "0 new" instead
-// of double-adding a change that already happened locally.
+// A batch is ABOUT TO BE sent (network call hasn't gone out yet). Bump
+// cloudCoinsMerged by the delta right away, optimistically — this closes a
+// race where the live Firestore listener (a separate websocket) can receive
+// the server's write and fire BEFORE the syncBankrollDelta callable's own
+// HTTP response gets back to this client. Without this, that early echo
+// would compute as "new" cloud money and double-add a change that already
+// happened locally during gameplay.
+window.addEventListener('round-sync-pending',(e)=>{
+  if(typeof e.detail?.delta==='number')cloudCoinsMerged+=e.detail.delta;
+});
+// The callable's response has now come back — correct cloudCoinsMerged to
+// the server's ACTUAL resulting total (not just our assumed delta), since
+// the server's anti-cheat clamp may have adjusted the amount slightly from
+// what we optimistically assumed above.
 window.addEventListener('round-sync-applied',(e)=>{
   if(typeof e.detail?.resultBankroll==='number')cloudCoinsMerged=e.detail.resultBankroll;
 });

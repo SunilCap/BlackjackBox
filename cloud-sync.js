@@ -441,8 +441,9 @@ function flushPendingHandSync() {
 }
 
 function closeBatchAndFlush() {
+  const delta = currentBatch.delta;
   syncQueue.push({
-    delta: currentBatch.delta,
+    delta,
     wagered: currentBatch.wagered,
     // idempotency token: lets a retried call that actually succeeded server-side
     // (but whose response we never received) get recognized and no-op'd rather
@@ -450,6 +451,16 @@ function closeBatchAndFlush() {
     token: `${currentUid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   });
   currentBatch = { delta: 0, wagered: 0, hands: 0 };
+  // Tell game.js to account for this delta RIGHT NOW, before the network
+  // call even goes out — not after it resolves. The live Firestore listener
+  // (a separate websocket) can receive the server's write and fire before
+  // the syncBankrollDelta callable's own HTTP response gets back to this
+  // client, since they're two independent round-trips. If game.js only
+  // updates cloudCoinsMerged on the callable's response (round-sync-applied,
+  // below), that echo can land first and get double-added. Firing this
+  // optimistically closes that window; round-sync-applied still corrects
+  // to the server's exact figure afterward (e.g. if anti-cheat clamped it).
+  window.dispatchEvent(new CustomEvent('round-sync-pending', { detail: { delta } }));
   processSyncQueue();
 }
 
@@ -485,9 +496,17 @@ async function processSyncQueue() {
 // Best-effort: try to get a partial batch out if the player backgrounds/closes
 // the tab mid-session. Not guaranteed to complete (the page can die before
 // the async call resolves) — it's a bonus attempt, not a substitute for the
-// every-5-rounds cadence above.
+// every-5-rounds cadence above. Both events are wired since neither fires
+// reliably in every situation on its own: visibilitychange is the primary
+// signal (backgrounding, switching apps), pagehide is a second net for
+// mobile/PWA navigations and app-quits where visibilitychange can be skipped
+// or arrive too late. Calling flushPendingHandSync() twice is harmless — it
+// no-ops once the batch is already empty.
 window.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') flushPendingHandSync();
+});
+window.addEventListener('pagehide', () => {
+  flushPendingHandSync();
 });
 
 window.CloudSync = {

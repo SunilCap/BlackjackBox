@@ -6,7 +6,7 @@
  * Bump CACHE_VERSION whenever you deploy a new version so returning users get fresh content.
  */
 
-const CACHE_VERSION = 'v1.6.5';
+const CACHE_VERSION = 'v1.6.6';
 const CACHE_NAME    = `blackjack-${CACHE_VERSION}`;
 
 const PRECACHE = [
@@ -20,6 +20,7 @@ const PRECACHE = [
   './icon-192.png',
   './privacy.html',
   './terms.html',
+  './rules.html',
   './img/card-back.png',
   './img/city-lasvegas.png',
   './img/city-paris.png',

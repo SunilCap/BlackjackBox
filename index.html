@@ -145,7 +145,7 @@
   <button class="pwa-install-btn" id="pwaInstallBtn">
     <span>📲</span> Add to Home Screen
   </button>
-  <div class="version-badge" id="versionBadge">v1.6.5</div>
+  <div class="version-badge" id="versionBadge">v1.6.6</div>
 
   <div class="lobby-bottom">
     <button class="lb-btn has-img" id="musicBtn"><img src="img/icon-music.png" alt="Music"></button>
@@ -153,6 +153,17 @@
     <button class="lb-btn has-img" id="lobbyStatsBtn"><img src="img/icon-chart.png" alt="Stats"></button>
     <button class="lb-btn has-img" id="rulesBtn"><img src="img/icon-question.png" alt="Rules"></button>
     <button class="lb-btn" id="langBtn" style="font-size:15px;font-weight:800;">EN</button>
+  </div>
+
+  <!-- Plain, always-in-DOM footer links (not gated behind the rules modal's
+       JS toggle) so search/ad-review crawlers reliably find real content
+       pages instead of only a game canvas. Visually tiny/unobtrusive by
+       design — this isn't meant to be a UI focal point, just a crawlable
+       trail to rules.html / privacy.html / terms.html. -->
+  <div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:10px;color:rgba(255,255,255,.15);z-index:1;">
+    <a href="rules.html" style="color:inherit;text-decoration:none;">Rules</a> ·
+    <a href="privacy.html" style="color:inherit;text-decoration:none;">Privacy</a> ·
+    <a href="terms.html" style="color:inherit;text-decoration:none;">Terms</a>
   </div>
 
   <!-- RULES MODAL -->
