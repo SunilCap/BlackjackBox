@@ -52,9 +52,11 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   position:absolute;inset:0;z-index:100;
   display:flex;flex-direction:column;
   transition:opacity .4s,transform .4s;
-  padding-bottom:98px; /* reserves the .lobby-bottom bar's height (12px+56px+30px)
-    now that it's absolutely positioned rather than in flow — keeps the
-    carousel's flex:1 from expanding underneath it */
+  padding-bottom:calc(104px + env(safe-area-inset-bottom,0px)); /* reserves
+    .lobby-bottom's height now that it's a two-row bar (icon buttons +
+    Rules/Privacy/Terms links) — 12px top pad + 56px buttons + 6px gap +
+    ~16px link line + 14px bottom pad, plus the device's own safe-area
+    inset so the carousel's flex:1 never expands underneath it */
 }
 #lobby.hide{opacity:0;transform:scale(1.06);pointer-events:none;}
 
@@ -232,12 +234,26 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 
 /* bottom icon bar — pinned to the bottom of #lobby's fixed frame (rather than
    sitting in normal document flow) so it can never be pushed around by the
-   daily-bonus banner, an ad, or anything else above it changing height. */
+   daily-bonus banner, an ad, or anything else above it changing height.
+   Two rows now: the icon buttons, then the crawlable Rules/Privacy/Terms
+   footer links — stacked as real flex children with their own gap, not two
+   independently bottom:0-anchored elements (which collided on real devices:
+   the footer text rendered inside the icon row's own bottom padding instead
+   of below it). env(safe-area-inset-bottom) added so this whole bar clears
+   the home-indicator gesture area on notched iPhones instead of sitting
+   right under it. */
 .lobby-bottom{
   position:absolute;left:0;right:0;bottom:0;z-index:2;
-  display:flex;justify-content:space-around;align-items:center;
-  padding:12px 20px 30px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:12px 20px calc(14px + env(safe-area-inset-bottom,0px));
 }
+.lobby-bottom-row{
+  display:flex;justify-content:space-around;align-items:center;width:100%;
+}
+.lobby-bottom-links{
+  font-size:10px;color:rgba(255,255,255,.18);
+}
+.lobby-bottom-links a{color:inherit;text-decoration:none;}
 .lb-btn{
   width:56px;height:56px;border-radius:50%;
   background:rgba(0,0,0,.55);border:1.5px solid rgba(255,255,255,.18);

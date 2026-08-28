@@ -593,9 +593,19 @@ if(DEBUG_MODE){
    suggesting a cheaper table the player CAN already afford over the full
    store/bailout/ad popup — only fall back to that when truly nothing is
    affordable. */
+// How much of a cheaper table's minBet counts as "affordable enough to
+// offer a switch" — deliberately much lower than that table's minStack
+// (the lobby's "can I comfortably sit down here" bar). Requiring the full
+// minStack here meant almost no one below their current table's minBet
+// would ever clear it (minStack usually runs ~50-100x minBet), so the
+// switch offer rarely appeared and players fell through to the generic
+// out-of-coins modal instead — even when they had plenty for several
+// rounds at a cheaper table. 10x minBet is enough runway to actually keep
+// playing, without demanding a full fresh "sit-down" stack.
+const SWITCH_TABLE_BET_MULTIPLE = 10;
 function findAffordableOtherTable(){
-  return TABLES.filter(t=>t!==activeTable&&bankroll>=t.minStack)
-    .sort((a,b)=>a.minStack-b.minStack)[0]||null;
+  return TABLES.filter(t=>t!==activeTable&&bankroll>=t.minBet*SWITCH_TABLE_BET_MULTIPLE)
+    .sort((a,b)=>a.minBet-b.minBet)[0]||null;
 }
 function checkOutOfCoins(){
   if(!activeTable||bankroll>=activeTable.minBet)return; // can still place a bet — nothing to do
@@ -605,7 +615,7 @@ function checkOutOfCoins(){
 }
 
 function showSwitchTableModal(alt){
-  $('stDesc').textContent=`${activeTable.name} needs ${fmt(activeTable.minStack)}+ to keep playing, but ${alt.name} only needs ${fmt(alt.minStack)} — you can afford that one.`;
+  $('stDesc').textContent=`You don't have enough for ${activeTable.name}'s ${fmt(activeTable.minBet)} minimum bet, but ${alt.name} only needs ${fmt(alt.minBet)} — you can keep playing there.`;
   $('switchTableModal').classList.add('show');
   const switchBtn=$('stSwitchBtn'),lobbyBtn=$('stLobbyBtn');
   const onSwitch=()=>{ $('switchTableModal').classList.remove('show'); enterGame(alt); cleanup(); };
