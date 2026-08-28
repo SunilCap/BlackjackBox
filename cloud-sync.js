@@ -509,6 +509,15 @@ window.addEventListener('pagehide', () => {
   flushPendingHandSync();
 });
 
+// Belt-and-suspenders: even visibilitychange/pagehide together aren't a
+// GUARANTEE — nothing in the browser platform promises a callback fires on
+// a hard OS-level kill, crash, or the process just getting yanked (this is
+// especially true on mobile). A periodic flush caps the worst-case data
+// loss at one interval's worth of play (currently 30s) instead of up to
+// HANDS_PER_SYNC_BATCH-1 hands with no time bound at all. Harmless overhead
+// when there's nothing pending — flushPendingHandSync() no-ops in that case.
+setInterval(flushPendingHandSync, 30000);
+
 window.CloudSync = {
   init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable,
   claimDailyBonus, isDailyBonusAvailable, nextDailyBonusDay,
