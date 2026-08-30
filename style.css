@@ -144,7 +144,16 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .table-card{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  flex:1;min-height:0;gap:10px;width:100%;padding:0 60px;
+  flex:0 1 auto;min-height:0;gap:10px;width:100%;padding:0 60px;
+  /* flex:0 1 auto (not flex:1) is deliberate: this should SHRINK under
+     pressure (when banners above squeeze the carousel) but never GROW
+     beyond its natural content size. Growing was the bug — it made
+     table-card fill ALL leftover carousel space, then center its own
+     content in the middle of that oversized box, while .dots (a separate
+     sibling right after it) rendered at the box's bottom edge — far below
+     the visually-centered content instead of hugging it. Now .carousel's
+     own justify-content:center correctly centers table-card+dots as one
+     group, and banner-slot below still shrinks internally when squeezed. */
 }
 /* flexible art slot: grows to fill spare room, shrinks down to min-height
    when banners above eat into the carousel's space, capped at 296px so it
