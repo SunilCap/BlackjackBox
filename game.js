@@ -2191,36 +2191,40 @@ $('langBack').addEventListener('click',()=>$('langOverlay').classList.remove('sh
 /* ══════════════════════════════════════════
    VERSION & PWA
 ══════════════════════════════════════════ */
-const APP_VERSION = '1.0.0';
-$('versionBadge').textContent = 'v' + APP_VERSION;
+// versionBadge's text comes from the static markup in index.html now
+// (kept in sync with sw.js's CACHE_VERSION on every deploy) — it USED to
+// get overwritten here with a separate hardcoded APP_VERSION constant that
+// never matched sw.js, which is part of what made cache-busting unreliable.
 
-/* ── SERVICE WORKER (activates automatically on HTTPS hosting) ── */
+/* ── SERVICE WORKER ──
+   Previously this built a SECOND, entirely separate service worker at
+   runtime (as a string, registered from a blob: URL) alongside the real
+   sw.js file — with its OWN hardcoded, never-changing cache name. Since
+   browsers differ on whether they even accept a blob:-registered service
+   worker, different browsers ended up running genuinely different service
+   workers with independently stuck caches — explaining why a fix could
+   show correctly in one browser and stay stale in another indefinitely,
+   no matter how many times CACHE_VERSION was bumped in sw.js (that bump
+   never touched the blob worker's cache at all).
+   Now: unregister ANY existing service worker for this origin first (flushes
+   out whatever's currently stuck, regardless of which path it came from),
+   then register the one real sw.js — the single source of truth for
+   versioning and precached assets going forward. */
 if('serviceWorker' in navigator){
-  const swCode = `
-const CACHE = 'blackjack-v${APP_VERSION}';
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll([self.location.href])).then(() => self.skipWaiting()));
-});
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
-});
-self.addEventListener('fetch', e => {
-  if(e.request.method !== 'GET') return;
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => {
-    if(!res || res.status !== 200) return res;
-    caches.open(CACHE).then(c => c.put(e.request, res.clone()));
-    return res;
-  })));
-});
-  `;
-  try {
-    const blob = new Blob([swCode], {type:'application/javascript'});
-    const swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl).catch(() => {
-      // Blob SW blocked — fall back to relative path (works on GitHub Pages)
+  const MIGRATION_KEY = 'bjbox:swMigratedV2'; // bump this key if a future SW change needs another one-time flush
+  if(!localStorage.getItem(MIGRATION_KEY)){
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      Promise.all(regs.map(r => r.unregister())).finally(() => {
+        localStorage.setItem(MIGRATION_KEY, '1');
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }).catch(() => {
+      localStorage.setItem(MIGRATION_KEY, '1');
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     });
-  } catch(e) {}
+  } else {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
 }
 
 /* ── PWA INSTALL PROMPT ── */
