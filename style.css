@@ -214,7 +214,7 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   transition:transform .08s,background .2s;
 }
 .watch-ad-btn:active{transform:scale(.96);background:rgba(212,175,55,.22);}
-.watch-ad-btn.hidden-slot{visibility:hidden;pointer-events:none;}
+.watch-ad-btn.hidden-slot{display:none;}
 
 /* carousel nav arrows */
 .arrow{
