@@ -132,8 +132,8 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 /* carousel */
 .carousel{
   flex:1;position:relative;z-index:2;
-  display:flex;align-items:stretch;justify-content:center;
-  flex-direction:column;gap:14px;
+  display:flex;align-items:stretch;justify-content:flex-start;
+  flex-direction:column;
   overflow-y:auto;overflow-x:hidden; /* emergency fallback only now — the
     content below is flexible and sized to fit even the tightest state
     (both banners + PWA-install pill showing), so this should never
@@ -141,6 +141,19 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   min-height:0; /* lets a flex:1 child actually shrink instead of
     overflowing its flex parent — without this, flex items default to
     min-height:auto and ignore the space constraint entirely */
+}
+.carousel-content{
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+  width:100%;margin:auto 0;min-height:0;flex:0 1 auto;
+  /* margin:auto (not justify-content:center on the parent) is the key fix:
+     auto margins center this block vertically when there's slack, but
+     gracefully collapse to 0 — flush against the top, fully reachable via
+     the carousel's own scroll — when content doesn't fit. justify-content:
+     center on an overflowing flex container is a known problematic
+     combination (notably in Safari): browsers can't cleanly compute
+     "center" once content is taller than the box, and often fall back to
+     pinning content at the top with a dead gap below and a stuck scrollbar
+     — exactly what this was producing. */
 }
 .table-card{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
