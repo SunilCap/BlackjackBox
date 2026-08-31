@@ -246,7 +246,9 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .dots{
   position:relative;z-index:2;
   display:flex;gap:10px;justify-content:center;
-  padding:0 0 16px;
+  padding:0 0 16px;margin-top:20px; /* explicit, on top of .carousel-content's
+    own gap:14px between its two children — redundant but deliberately so,
+    as a hard-to-miss guarantee of separation from the table content above */
 }
 .dot{
   width:10px;height:10px;border-radius:50%;
