@@ -454,7 +454,7 @@ $('eaSubmit')?.addEventListener('click',async()=>{
   btn.textContent=original;btn.disabled=false;
 });
 const SUITS=[{sym:"♠",c:"black"},{sym:"♥",c:"red"},{sym:"♦",c:"red"},{sym:"♣",c:"black"}];
-const SUIT_IMG={"♠":"img/suit-spade.png","♥":"img/suit-heart.png","♦":"img/suit-diamond.png","♣":"img/suit-club.png"};
+const CARD_FACE_IMG={"♠":"img/card-spade.png","♥":"img/card-heart.png","♦":"img/card-diamond.png","♣":"img/card-club.png"};
 const RANKS=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 
 /* ── LOBBY ── */
@@ -876,7 +876,10 @@ function layoutHand(container,cards,fdLast){
     const fd=fdLast&&i===n-1;
     const cd=document.createElement('div');
     cd.className="card "+(fd?"back":card.col);
-    if(!fd)cd.innerHTML=`<div class="corner">${card.rank}<br><img class="suit-ic" src="${SUIT_IMG[card.suit]}"></div><img class="pip" src="${SUIT_IMG[card.suit]}"><div class="corner bot">${card.rank}<br><img class="suit-ic" src="${SUIT_IMG[card.suit]}"></div>`;
+    if(!fd){
+      cd.style.backgroundImage=`url(${CARD_FACE_IMG[card.suit]})`;
+      cd.innerHTML=`<div class="corner">${card.rank}</div><div class="corner bot">${card.rank}</div>`;
+    }
     const lx=cw/2-40-totalSpan/2+stride*i;
     cd.style.left=lx+'px';
     cd.style.top=(i%2===0?0:4)+'px';
@@ -1680,7 +1683,10 @@ function layoutHandSized(container,cards,fdLast,sizeClass){
     const fd=fdLast&&i===n-1;
     const cd=document.createElement('div');
     cd.className='card '+(fd?'back':card.col)+(sizeClass?' card-'+sizeClass:'');
-    if(!fd)cd.innerHTML=`<div class="corner">${card.rank}<br><img class="suit-ic" src="${SUIT_IMG[card.suit]}"></div><img class="pip" src="${SUIT_IMG[card.suit]}"><div class="corner bot">${card.rank}<br><img class="suit-ic" src="${SUIT_IMG[card.suit]}"></div>`;
+    if(!fd){
+      cd.style.backgroundImage=`url(${CARD_FACE_IMG[card.suit]})`;
+      cd.innerHTML=`<div class="corner">${card.rank}</div><div class="corner bot">${card.rank}</div>`;
+    }
     const lx=cw/2-W/2-totalSpan/2+stride*i;
     cd.style.left=lx+'px';
     cd.style.top=(i%2===0?0:4)+'px';
@@ -2259,7 +2265,7 @@ $('pwaInstallBtn').addEventListener('click', async () => {
     'img/city-lasvegas.png','img/city-paris.png','img/city-singapore.png','img/city-melbourne.png',
     'img/icon-music.png','img/icon-mute.png','img/icon-cart.png','img/icon-chart.png',
     'img/icon-question.png','img/icon-back.png','img/icon-chip-bankroll.png','img/icon-plus.png',
-    'img/suit-heart.png','img/suit-club.png','img/suit-diamond.png','img/suit-spade.png'
+    'img/card-heart.png','img/card-club.png','img/card-diamond.png','img/card-spade.png'
   ];
   const fill=$('lsFill'),pct=$('lsPct'),screen=$('loadingScreen');
   const total=urls.length;
