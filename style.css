@@ -210,16 +210,21 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
    Scales by height now (was width-driven), so it actually shrinks along
    with .banner-slot instead of overflowing it when space is tight. */
 .city-banner-img{
-  height:100%;width:auto;max-width:320px;
+  max-height:100%;max-width:320px;width:auto;height:auto;object-fit:contain;
   filter:drop-shadow(0 4px 18px rgba(0,0,0,.55));
 }
 /* table info box */
 .table-info{
   background:rgba(0,0,0,.7);border-radius:10px;
   padding:10px 24px;text-align:center;
-  flex:0 0 auto; /* spacing now comes from .table-card's gap, not margin */
+  flex:0 1 auto;min-height:0; /* was 0 0 auto (never shrink) — locked
+    tables add an extra warning line, and .banner-slot was the ONLY
+    shrinkable sibling, so it alone absorbed that entire extra height on
+    top of its own squeeze. Letting this box shrink too (padding/line-
+    height compress a little before anything is clipped) spreads that
+    load instead of dumping all of it on the artwork. */
 }
-.table-info p{color:#fff;font-size:18px;font-weight:600;line-height:2;}
+.table-info p{color:#fff;font-size:18px;font-weight:600;line-height:1.7;}
 .table-info .info-locked{color:#ff7b6b;font-size:16px;margin-top:6px;}
 .info-locked.hidden-slot{visibility:hidden;}
 
@@ -884,8 +889,8 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 /* version badge */
 .version-badge{
   text-align:center;
-  color:rgba(255,255,255,.18);
-  font-size:12px;letter-spacing:.5px;
+  color:rgba(255,255,255,.55);
+  font-size:12px;font-weight:600;letter-spacing:.5px;
   padding-bottom:4px;
 }
 
