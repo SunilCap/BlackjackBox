@@ -180,14 +180,19 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
      own justify-content:center correctly centers table-card+dots as one
      group, and banner-slot below still shrinks internally when squeezed. */
 }
-/* flexible art slot: grows to fill spare room, shrinks down to min-height
-   when banners above eat into the carousel's space, capped at 296px so it
-   never gets weirdly huge when nothing else is showing. Every city's art
-   (real banner image OR the CSS-drawn icon+badge combo for Monaco) centers
-   inside it, so the play button / watch-ad button / dots below shift only
-   as much as the available space forces them to. */
+/* art slot: the artwork's actual resting size, NOT flex-grow. flex-grow
+   here was always inert — table-card and carousel-content are both
+   deliberately flex:0 1 auto (no grow, see comment above), so there was
+   never any leftover space for banner-slot's old flex:1 to expand into;
+   it was rendering at the raw image's tiny intrinsic size, which is why
+   the artwork looked cramped and left a large dead gap below it instead
+   of filling the middle of the screen like the reference mockups.
+   flex-basis:220px sets that resting size directly. It still shrinks
+   (flex-shrink:1) down to min-height when banners above / a locked
+   table's extra warning+ad-button squeeze the available space, and is
+   capped at max-height so it can't get oversized on a bigger screen. */
 .banner-slot{
-  width:100%;flex:1 1 auto;min-height:70px;max-height:296px;
+  width:100%;flex:0 1 220px;min-height:80px;max-height:296px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
 }
 /* neon city icon — scales by the height its (now flexible) .banner-slot
