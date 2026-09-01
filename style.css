@@ -132,7 +132,7 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 /* carousel */
 .carousel{
   flex:1;position:relative;z-index:2;
-  display:flex;align-items:stretch;justify-content:flex-start;
+  display:flex;align-items:stretch;
   flex-direction:column;
   overflow-y:auto;overflow-x:hidden; /* emergency fallback only now — the
     content below is flexible and sized to fit even the tightest state
@@ -142,18 +142,25 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
     overflowing its flex parent — without this, flex items default to
     min-height:auto and ignore the space constraint entirely */
 }
+/* v1.7.4: centering redone with a flex "spacer" pair instead of
+   margin:auto. margin:auto centering on a flex item, when the flex
+   PARENT has overflow:auto, hits a real WebKit bug: Safari resolves
+   margin-top:auto as 0 while still honoring margin-bottom:auto, so the
+   block pins to the top and all the slack collapses into one gap at the
+   bottom — exactly the "content sits too high, big gap below" symptom
+   reported on mobile Safari (Chromium/Edge doesn't have this bug, which
+   is why it looked fine there). Two empty flex:1 spacers before/after
+   the content sidestep auto-margins entirely: they split the free space
+   evenly (= centered), and if content ever overflows they both shrink to
+   0, leaving normal top-anchored scrolling — same safe-fallback behavior
+   as before, without the buggy code path. */
+.carousel::before,
+.carousel::after{
+  content:"";flex:1 1 0;min-height:0;
+}
 .carousel-content{
   display:flex;flex-direction:column;align-items:center;gap:14px;
-  width:100%;margin:auto 0;min-height:0;flex:0 1 auto;
-  /* margin:auto (not justify-content:center on the parent) is the key fix:
-     auto margins center this block vertically when there's slack, but
-     gracefully collapse to 0 — flush against the top, fully reachable via
-     the carousel's own scroll — when content doesn't fit. justify-content:
-     center on an overflowing flex container is a known problematic
-     combination (notably in Safari): browsers can't cleanly compute
-     "center" once content is taller than the box, and often fall back to
-     pinning content at the top with a dead gap below and a stuck scrollbar
-     — exactly what this was producing. */
+  width:100%;flex:0 0 auto;min-height:0;
 }
 .table-card{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
