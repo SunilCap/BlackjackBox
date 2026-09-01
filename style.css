@@ -134,29 +134,31 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   flex:1;position:relative;z-index:2;
   display:flex;align-items:stretch;
   flex-direction:column;
-  overflow-y:auto;overflow-x:hidden; /* emergency fallback only now — the
-    content below is flexible and sized to fit even the tightest state
-    (both banners + PWA-install pill showing), so this should never
-    actually need to scroll in normal use */
+  overflow:hidden; /* no scrolling, ever — this is a mobile app screen,
+    not a document. The flex-shrink chain below (table-card →
+    banner-slot → city-banner-img, all flex-shrink:1 with sane
+    min/max-heights) is what keeps everything fitting the available
+    space; overflow:auto here would just paper over a sizing bug with a
+    scrollbar, which isn't an acceptable outcome on this screen. */
   min-height:0; /* lets a flex:1 child actually shrink instead of
     overflowing its flex parent — without this, flex items default to
     min-height:auto and ignore the space constraint entirely */
 }
-/* v1.7.5: centering redone with a flex "spacer" pair instead of
-   margin:auto. margin:auto centering on a flex item, when the flex
-   PARENT has overflow:auto, hits a real WebKit bug: Safari resolves
-   margin-top:auto as 0 while still honoring margin-bottom:auto, so the
-   block pins to the top and all the slack collapses into one gap at the
-   bottom — exactly the "content sits too high, big gap below" symptom
-   reported on mobile Safari (Chromium/Edge doesn't have this bug, which
-   is why it looked fine there). Two empty flex:1 spacers before/after
-   the content sidestep auto-margins entirely: they split the free space
-   evenly (= centered). IMPORTANT: .carousel-content itself must stay
-   flex-shrink:1 (not 0) — it needs to keep compressing under its own
-   normal shrink chain (table-card → banner-slot → city-banner-img, all
-   already flex-shrink:1 with sane min/max-heights) so tall artwork
-   (e.g. Singapore) still fits without ever growing the page and forcing
-   a real scrollbar — that's the whole point, not just a fallback. */
+/* v1.7.6: centering via a flex "spacer" pair instead of margin:auto.
+   margin:auto centering on a flex item, when the flex PARENT has
+   overflow:auto, hits a real WebKit bug: Safari resolves margin-top:auto
+   as 0 while still honoring margin-bottom:auto, so the block pins to the
+   top and all the slack collapses into one gap at the bottom — exactly
+   the "content sits too high, big gap below" symptom reported on mobile
+   Safari (Chromium/Edge doesn't have this bug, which is why it looked
+   fine there). Two empty flex:1 spacers before/after the content
+   sidestep auto-margins entirely: they split the free space evenly
+   (= centered). .carousel now uses overflow:hidden, not auto — there is
+   no scroll fallback, so .carousel-content must stay flex-shrink:1 (not
+   0): it has to keep compressing under its own normal shrink chain
+   (table-card → banner-slot → city-banner-img) so tall artwork (e.g.
+   Singapore) always fits the available space instead of ever needing a
+   scrollbar. */
 .carousel::before,
 .carousel::after{
   content:"";flex:1 1 0;min-height:0;
