@@ -52,11 +52,12 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   position:absolute;inset:0;z-index:100;
   display:flex;flex-direction:column;
   transition:opacity .4s,transform .4s;
-  padding-bottom:calc(104px + env(safe-area-inset-bottom,0px)); /* reserves
-    .lobby-bottom's height now that it's a two-row bar (icon buttons +
-    Rules/Privacy/Terms links) — 12px top pad + 56px buttons + 6px gap +
-    ~16px link line + 14px bottom pad, plus the device's own safe-area
-    inset so the carousel's flex:1 never expands underneath it */
+  padding-bottom:calc(126px + env(safe-area-inset-bottom,0px)); /* reserves
+    .lobby-bottom's height now that it's a three-row bar (icon buttons +
+    Rules/Privacy/Terms links + version badge) — 12px top pad + 56px
+    buttons + 6px gap + ~16px link line + 6px gap + ~16px version line +
+    14px bottom pad, plus the device's own safe-area inset so the
+    carousel's flex:1 never expands underneath it */
 }
 #lobby.hide{opacity:0;transform:scale(1.06);pointer-events:none;}
 

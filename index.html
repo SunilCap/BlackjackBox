@@ -146,7 +146,6 @@
   <button class="pwa-install-btn" id="pwaInstallBtn">
     <span>📲</span> Add to Home Screen
   </button>
-  <div class="version-badge" id="versionBadge">v1.7.8</div>
 
   <div class="lobby-bottom">
     <div class="lobby-bottom-row">
@@ -165,6 +164,14 @@
     <div class="lobby-bottom-links">
       <a href="rules.html">Rules</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a>
     </div>
+    <!-- v1.7.9: moved here from normal flow above .lobby-bottom. It used to
+         render in the space #lobby reserves for THIS bar's own height, but
+         .lobby-bottom is position:absolute with a background sitting on
+         top of that exact same space (z-index:2) — so the badge was being
+         visually covered by this bar, not just dim. Making it brighter
+         never could have fixed that; it needed to actually be inside the
+         visible bar. -->
+    <div class="version-badge" id="versionBadge">v1.7.9</div>
   </div>
 
   <!-- RULES MODAL -->
