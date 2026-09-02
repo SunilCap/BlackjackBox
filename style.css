@@ -170,34 +170,24 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .table-card{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  flex:0 1 auto;min-height:0;gap:10px;width:100%;padding:0 60px;
-  /* flex:0 1 auto (not flex:1) is deliberate: this should SHRINK under
-     pressure (when banners above squeeze the carousel) but never GROW
-     beyond its natural content size. Growing was the bug — it made
-     table-card fill ALL leftover carousel space, then center its own
-     content in the middle of that oversized box, while .dots (a separate
-     sibling right after it) rendered at the box's bottom edge — far below
-     the visually-centered content instead of hugging it. Now .carousel's
-     own justify-content:center correctly centers table-card+dots as one
-     group, and banner-slot below still shrinks internally when squeezed. */
+  flex:0 0 auto;gap:10px;width:100%;padding:0 60px;
+  /* v1.8: every child below now has a FIXED height and always reserves
+     its slot even when visually hidden (locked-warning line and the
+     Watch Ad button both use visibility:hidden, not display:none, when
+     not applicable) — so table-card's own total height is now constant
+     across every table and every locked/unlocked state. This removes
+     the entire class of bugs we hit from flex-shrink math: overlapping
+     text, the artwork rendering tiny, arrows drifting out of place.
+     There's nothing left to compute — one fixed-size box, centered as
+     a whole by .carousel below. */
 }
-/* art slot: the artwork's actual resting size, NOT flex-grow. flex-grow
-   here was always inert — table-card and carousel-content are both
-   deliberately flex:0 1 auto (no grow, see comment above), so there was
-   never any leftover space for banner-slot's old flex:1 to expand into;
-   it was rendering at the raw image's tiny intrinsic size, which is why
-   the artwork looked cramped and left a large dead gap below it instead
-   of filling the middle of the screen like the reference mockups.
-   flex-basis:220px sets that resting size directly. It still shrinks
-   (flex-shrink:1) down to min-height when banners above / a locked
-   table's extra warning+ad-button squeeze the available space, and is
-   capped at max-height so it can't get oversized on a bigger screen. */
 .banner-slot{
-  width:100%;flex:0 1 220px;min-height:80px;max-height:296px;
+  width:100%;flex:0 0 240px; /* fixed — identical on every table and every
+    state, per explicit request. No shrink, no grow. */
   display:flex;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden; /* guards against an unusually large art asset ever
+    pushing this fixed box taller than its reserved 240px */
 }
-/* neon city icon — scales by the height its (now flexible) .banner-slot
-   actually has, instead of a fixed 220x200 that could exceed the slot */
 .city-icon{
   width:auto;height:100%;max-width:220px;max-height:200px;
   filter:drop-shadow(0 0 18px currentColor);
@@ -212,48 +202,55 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   box-shadow:0 0 18px currentColor, inset 0 0 12px rgba(255,255,255,.08);
   transition:all .35s;
 }
-/* real city banner image (sprite asset, replaces city-icon+city-badge combo).
-   Scales by height now (was width-driven), so it actually shrinks along
-   with .banner-slot instead of overflowing it when space is tight. */
 .city-banner-img{
   max-height:100%;max-width:320px;width:auto;height:auto;object-fit:contain;
   filter:drop-shadow(0 4px 18px rgba(0,0,0,.55));
 }
-/* table info box */
+/* table info box — fixed 165px on every table. 137px is the exact
+   content height at 3 short lines + the warning line, but Melbourne's
+   "Bet $100,000 -  $1,000,000" is long enough at this font size that it
+   risks wrapping to a 2nd line inside this box's ~270px width — adding
+   28px of buffer here instead of shipping a razor-exact fit that could
+   silently clip that table specifically. */
 .table-info{
   background:rgba(0,0,0,.7);border-radius:10px;
-  padding:10px 24px;text-align:center;
-  flex:0 0 auto; /* NOT shrinkable — reverted from v1.7.7's flex:0 1 auto.
-    That let this box get squeezed below its own text's actual height,
-    and since it has no overflow:hidden, the text didn't get clipped — it
-    spilled past the shrunk box and visually overlapped the Locked
-    button / warning line / Watch Ad button below it. Text boxes should
-    never be the thing that compresses; only .banner-slot (art, which
-    degrades gracefully when smaller) should absorb squeeze. Its v1.7.8
-    shrink range (220px default down to an 80px floor) gives enough room
-    for a locked table's extra warning line + Watch Ad button on its own. */
+  padding:10px 24px;text-align:center;box-sizing:border-box;
+  flex:0 0 165px;width:100%;
+  display:flex;flex-direction:column;justify-content:center;
+  overflow:hidden; /* safety net for any table whose text still runs
+    longer than expected */
 }
 .table-info p{color:#fff;font-size:18px;font-weight:600;line-height:1.7;}
 .table-info .info-locked{color:#ff7b6b;font-size:16px;margin-top:6px;}
-.info-locked.hidden-slot{visibility:hidden;}
+.info-locked.hidden-slot{visibility:hidden;} /* already reserves space — unchanged */
 
 .play-btn{
-  padding:14px 60px;border-radius:32px;border:none;flex:0 0 auto;
+  padding:14px 60px;border-radius:32px;border:none;flex:0 0 56px;box-sizing:border-box;
   background:linear-gradient(175deg,#5de068,#2ca838);
   color:#fff;font-weight:800;font-size:22px;cursor:pointer;
   box-shadow:0 6px 20px rgba(44,168,56,.5);
   transition:transform .08s,opacity .2s;
+  display:flex;align-items:center;justify-content:center;
 }
 .play-btn:active{transform:scale(.96);}
 .play-btn.locked{background:linear-gradient(175deg,#666,#444);box-shadow:none;cursor:default;}
 
 .watch-ad-btn{
-  display:block;margin:0 auto;padding:9px 26px;border-radius:26px;border:1.5px solid rgba(212,175,55,.5);flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;margin:0 auto;
+  padding:9px 26px;border-radius:26px;border:1.5px solid rgba(212,175,55,.5);
+  flex:0 0 39px;box-sizing:border-box;
   background:rgba(212,175,55,.12);color:#ffd76b;font-weight:700;font-size:15px;cursor:pointer;
   transition:transform .08s,background .2s;
 }
 .watch-ad-btn:active{transform:scale(.96);background:rgba(212,175,55,.22);}
-.watch-ad-btn.hidden-slot{display:none;}
+.watch-ad-btn.hidden-slot{
+  visibility:hidden;pointer-events:none; /* was display:none — that removed
+    it from layout entirely, so table-card's total height changed between
+    locked/unlocked, which is exactly what pushed the arrows and card
+    content around between states. visibility:hidden keeps its 39px slot
+    always reserved instead; pointer-events:none stops the invisible slot
+    from intercepting taps when it's not actually usable. */
+}
 
 /* carousel nav arrows */
 .arrow{
