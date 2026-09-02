@@ -244,6 +244,8 @@ window.addEventListener('cloudsync-ready',()=>{
   CloudSync.init((cloudState,hardReset)=>{
     bailoutLockoutUntil=cloudState.bailoutLockoutUntil||0; // plain read-through, correct either way
     updateBailoutUI?.(); // don't wait up to 1s for the next tick — show correct state immediately on load
+    nextFreeChipAt=cloudState.nextFreeChipAt||0; // same plain read-through
+    updateFreeChipUI?.();
     if(hardReset){
       // Either the very first cloud snapshot after this page load (local
       // `bankroll` is just today's fresh-JS-default, nothing local worth
@@ -294,6 +296,7 @@ window.addEventListener('cloudsync-ready',()=>{
       dailyBonusPopupShown=true;
       setTimeout(showDailyBonusModal,800); // small delay so it doesn't collide with the loading screen fade-out
     }
+    updateRewardsBadge();
   });
 });
 
@@ -330,6 +333,7 @@ async function claimDailyBonusFlow(){
     }
     $('dailyBonusModal').classList.remove('show');
     $('dailyBonusBanner').classList.add('hidden');
+    updateRewardsBadge();
   }catch(err){
     console.error('Daily bonus claim failed',err);
     showToast('Could not claim bonus — try again');
@@ -357,6 +361,10 @@ const $=id=>document.getElementById(id);
 $('dbClaimBtn')?.addEventListener('click',claimDailyBonusFlow);
 $('dbSkipBtn')?.addEventListener('click',()=>$('dailyBonusModal').classList.remove('show'));
 $('dailyBonusBanner')?.addEventListener('click',showDailyBonusModal);
+$('rewardsBtn')?.addEventListener('click',()=>{updateRewardsBadge();$('rewardsModal').classList.add('show');});
+$('rewardsCloseBtn')?.addEventListener('click',()=>$('rewardsModal').classList.remove('show'));
+$('rewardsDailyRow')?.addEventListener('click',()=>{$('rewardsModal').classList.remove('show');showDailyBonusModal();});
+$('rewardsOocRow')?.addEventListener('click',()=>{$('rewardsModal').classList.remove('show');showLobbyClaimModal();});
 
 /* ── ACCOUNT LINKING ── */
 function refreshAccountCard(){
@@ -675,6 +683,7 @@ function showLobbyClaimModal(){
         showToast('Free top-ups used up — try an ad instead');
         bailoutLockoutUntil=result.lockoutUntil||bailoutLockoutUntil;
         updateBailoutUI();
+        updateRewardsBadge();
         return;
       }
       bankroll+=result.granted;
@@ -683,6 +692,7 @@ function showLobbyClaimModal(){
       updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby(); // re-check every table's locked state now
       showToast('+'+fmt(result.granted)+' chips!');
       updateBailoutUI();
+      updateRewardsBadge();
     }catch(err){
       console.error('claimZeroBailout failed',err);
       showToast('Could not claim — try again');
@@ -705,16 +715,73 @@ function showLobbyClaimModal(){
   closeBtn.addEventListener('click',onClose);
 }
 
+/**
+ * Drives the Rewards hub's badge dot and its "Free Top-Up" row.
+ * Deliberately keyed off *live* bankroll/lockout state on every call, not
+ * a one-time "already showed this" flag — so once a bailout claim lands,
+ * the row disappears on its own (bankroll is no longer $0) and will
+ * naturally reappear if the player goes broke again later, with no extra
+ * dismissed/seen tracking needed.
+ */
+function updateRewardsBadge(){
+  const dbAvailable=CloudSync.isDailyBonusAvailable();
+  const oocAvailable=bankroll<=0&&bailoutLockoutUntil<=Date.now();
+  const oocRow=$('rewardsOocRow'),dailySub=$('rewardsDailySub'),badge=$('rewardsBadge');
+  if(oocRow)oocRow.classList.toggle('hidden',!oocAvailable);
+  if(dailySub)dailySub.textContent=dbAvailable?('Day '+CloudSync.nextDailyBonusDay()+' of 7'):'Claimed — back tomorrow';
+  if(badge)badge.classList.toggle('hidden',!(dbAvailable||oocAvailable));
+}
+setInterval(updateRewardsBadge,1000); // catches bankroll hitting $0 mid-game and the bailout lockout expiring, same as the other tickers above
+
 /* server is the real authority on lockout state — this local copy is only
    for updating the UI promptly without an extra round trip; refreshed from
    every cloud snapshot AND every claimZeroBailout response */
 let bailoutLockoutUntil=0;
+
+/* same trust model, same pattern: server-authoritative, this is just a
+   local mirror for prompt UI updates. Refreshed from every cloud snapshot
+   AND every claimFreeChip response. */
+let nextFreeChipAt=0;
 
 function fmtCountdown(ms){
   const totalSec=Math.max(0,Math.ceil(ms/1000));
   const m=Math.floor(totalSec/60),s=totalSec%60;
   return `${m}:${String(s).padStart(2,'0')}`;
 }
+
+/** Drives the gift-icon button next to the balance bar — dim with a
+    countdown while waiting, solid gold + glow once a claim is ready. */
+function updateFreeChipUI(){
+  const now=Date.now();
+  const ready=nextFreeChipAt<=now;
+  const btn=$('freeChipBtn'),timerEl=$('freeChipTimer');
+  if(!btn)return;
+  btn.classList.toggle('ready',ready);
+  if(timerEl&&!ready)timerEl.textContent=fmtCountdown(nextFreeChipAt-now);
+}
+setInterval(updateFreeChipUI,1000);
+
+$('freeChipBtn')?.addEventListener('click',async()=>{
+  if(nextFreeChipAt>Date.now())return; // not ready yet — server would reject this anyway, but no need for a round trip
+  try{
+    const result=await CloudSync.claimFreeChip();
+    if(result.locked){
+      // Server disagreed with our local timer (e.g. this device's clock
+      // drifted, or another tab already claimed it) — resync from
+      // whatever the server actually says instead of trusting our guess.
+      nextFreeChipAt=result.nextFreeChipAt||nextFreeChipAt;
+      updateFreeChipUI();
+      return;
+    }
+    bankroll+=result.granted;
+    nextFreeChipAt=result.nextFreeChipAt;
+    updateUI();$('lobbyBal').textContent=fmt(bankroll);
+    updateFreeChipUI();
+    showToast('+'+fmt(result.granted)+' free chips!');
+  }catch(err){
+    console.error('claimFreeChip failed',err);
+  }
+});
 
 /** Drives BOTH the persistent lobby banner and the claim popup's button/hint — single source of truth, called every tick and whenever bailoutLockoutUntil changes. */
 function updateBailoutUI(){

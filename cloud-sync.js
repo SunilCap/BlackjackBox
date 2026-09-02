@@ -269,6 +269,22 @@ async function claimAdReward(context) {
 }
 
 /**
+ * The recurring "come back every 30 minutes" free-chip claim. Server is
+ * the sole authority on timing via `nextFreeChipAt` on the user doc — this
+ * call can't be spoofed by messing with the local clock or cached state,
+ * same trust model as claimZeroBailout/claimDailyBonus. No stacking: each
+ * claim resets the cooldown from the moment it's claimed, it does not
+ * accumulate while the app is closed.
+ * @returns {Promise<{ok:boolean, locked:boolean, granted?:number, bankroll:number, nextFreeChipAt:number}>}
+ */
+async function claimFreeChip() {
+  await authReady;
+  const fn = httpsCallable(functions, "claimFreeChip");
+  const result = await fn();
+  return result.data;
+}
+
+/**
  * The "out of coins → back to lobby" free top-up. Up to 3 uses, then a
  * 30-minute lockout (rolling — resets to a fresh 3 once it elapses).
  * @returns {Promise<{ok:boolean, locked:boolean, granted?:number, bankroll:number, usesRemaining?:number, lockoutUntil?:number}>}
@@ -521,7 +537,7 @@ setInterval(flushPendingHandSync, 30000);
 window.CloudSync = {
   init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable,
   claimDailyBonus, isDailyBonusAvailable, nextDailyBonusDay,
-  claimAdReward, claimZeroBailout,
+  claimAdReward, claimZeroBailout, claimFreeChip,
   linkWithGoogle, linkWithEmail, isAccountLinked, getAccountLabel,
   recordHandForSync, flushPendingHandSync,
 };

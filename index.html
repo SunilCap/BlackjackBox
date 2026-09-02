@@ -106,12 +106,14 @@
   <div class="lobby-bg" id="lobbyBg"></div>
 
   <div class="lobby-top">
-    <button class="lobby-more">MORE</button>
     <div class="lobby-balance">
       <div class="lobby-coin"></div>
       <div class="lobby-bal" id="lobbyBal">$1,000</div>
       <button class="lobby-add" id="lobbyAdd">+</button>
     </div>
+    <button class="free-chip-btn" id="freeChipBtn">
+      🎁<span id="freeChipTimer"></span>
+    </button>
   </div>
 
   <button class="daily-bonus-banner hidden" id="dailyBonusBanner">
@@ -141,6 +143,9 @@
       <button class="lb-btn has-img" id="storeBtn"><img src="img/icon-cart.png" alt="Store"></button>
       <button class="lb-btn has-img" id="lobbyStatsBtn"><img src="img/icon-chart.png" alt="Stats"></button>
       <button class="lb-btn has-img" id="rulesBtn"><img src="img/icon-question.png" alt="Rules"></button>
+      <button class="lb-btn" id="rewardsBtn" style="font-size:20px;position:relative;">
+        🎁<span class="reward-badge hidden" id="rewardsBadge"></span>
+      </button>
       <button class="lb-btn" id="langBtn" style="font-size:15px;font-weight:800;">EN</button>
     </div>
     <!-- Plain, always-in-DOM footer links (not gated behind the rules
@@ -159,7 +164,7 @@
          visually covered by this bar, not just dim. Making it brighter
          never could have fixed that; it needed to actually be inside the
          visible bar. -->
-    <div class="version-badge" id="versionBadge">v1.8.1</div>
+    <div class="version-badge" id="versionBadge">v1.9.1</div>
   </div>
 
   <!-- RULES MODAL -->
@@ -564,6 +569,36 @@
     <div class="ooc-desc" id="stDesc"></div>
     <button class="db-claim-btn" id="stSwitchBtn">Switch Table</button>
     <button class="db-skip-btn" id="stLobbyBtn">Back to Lobby instead</button>
+  </div>
+</div>
+
+<!-- REWARDS HUB — a small menu; each row opens the existing dailyBonusModal
+     / lobbyClaimModal below rather than duplicating their claim logic -->
+<div id="rewardsModal">
+  <div class="db-inner">
+    <div class="db-icon">🎁</div>
+    <h2 class="db-title">Rewards</h2>
+    <div class="rewards-list">
+      <button class="reward-row" id="rewardsDailyRow">
+        <div class="reward-row-icon">🎁</div>
+        <div class="reward-row-text">
+          <div class="reward-row-title">Daily Bonus</div>
+          <div class="reward-row-sub" id="rewardsDailySub">Day 1 of 7</div>
+        </div>
+        <div class="reward-row-chevron">›</div>
+      </button>
+      <!-- hidden by default — only shown when bankroll is actually $0 and
+           a bailout claim is available; see updateRewardsBadge() in game.js -->
+      <button class="reward-row hidden" id="rewardsOocRow">
+        <div class="reward-row-icon">💸</div>
+        <div class="reward-row-text">
+          <div class="reward-row-title">Free Top-Up</div>
+          <div class="reward-row-sub">Out of coins — grab a few free</div>
+        </div>
+        <div class="reward-row-chevron">›</div>
+      </button>
+    </div>
+    <button class="db-skip-btn" id="rewardsCloseBtn">Close</button>
   </div>
 </div>
 

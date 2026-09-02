@@ -52,12 +52,12 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   position:absolute;inset:0;z-index:100;
   display:flex;flex-direction:column;
   transition:opacity .4s,transform .4s;
-  padding-bottom:calc(126px + env(safe-area-inset-bottom,0px)); /* reserves
-    .lobby-bottom's height now that it's a three-row bar (icon buttons +
-    Rules/Privacy/Terms links + version badge) — 12px top pad + 56px
-    buttons + 6px gap + ~16px link line + 6px gap + ~16px version line +
-    14px bottom pad, plus the device's own safe-area inset so the
-    carousel's flex:1 never expands underneath it */
+  padding-bottom:calc(118px + env(safe-area-inset-bottom,0px)); /* reserves
+    .lobby-bottom's height — three-row bar (icon buttons + Rules/Privacy/
+    Terms links + version badge) — 12px top pad + 48px buttons (was 56,
+    shrunk to fit 6 icons) + 6px gap + ~16px link line + 6px gap + ~16px
+    version line + 14px bottom pad, plus the device's own safe-area inset
+    so the carousel's flex:1 never expands underneath it */
 }
 #lobby.hide{opacity:0;transform:scale(1.06);pointer-events:none;}
 
@@ -119,6 +119,21 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   background:rgba(0,0,0,.55);border:1.5px solid rgba(255,255,255,.15);
   border-radius:28px;padding:5px 10px 5px 6px;gap:8px;
 }
+.free-chip-btn{
+  flex:none;width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(212,175,55,.14);border:1.5px solid rgba(212,175,55,.5);
+  transition:transform .08s,background .2s,box-shadow .2s;
+  font-size:14px;line-height:1;
+}
+.free-chip-btn:active{transform:scale(.93);}
+#freeChipTimer{color:#ffe07a;font-size:8px;font-weight:700;line-height:1.3;margin-top:1px;}
+.free-chip-btn.ready{
+  background:#ffd76b;border-color:#ffd76b;
+  box-shadow:0 0 0 3px rgba(255,215,107,.25);
+  font-size:18px;
+}
+.free-chip-btn.ready #freeChipTimer{display:none;}
 .lobby-coin{
   width:36px;height:36px;border-radius:50%;flex:none;
   background:radial-gradient(circle at 34% 28%,#ffe07a,#d4af37 58%,#8a6610 100%);
@@ -310,9 +325,13 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .lobby-bottom-links a{color:inherit;text-decoration:none;}
 .lb-btn{
-  width:56px;height:56px;border-radius:50%;
+  width:48px;height:48px;border-radius:50%; /* was 56px — with the new
+    Rewards button this row now holds 6 icons instead of 5; at 56px they'd
+    have almost no breathing room (6×56=336px in a 350px-wide row).
+    Shrinking uniformly keeps them all consistent rather than making the
+    new one an odd size out. */
   background:rgba(0,0,0,.55);border:1.5px solid rgba(255,255,255,.18);
-  color:#fff;font-size:24px;cursor:pointer;
+  color:#fff;font-size:20px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
 }
 
@@ -352,6 +371,12 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .lb-btn.has-img img,.icon-btn.has-img img,.fs-back.has-img img,.add-btn.has-img img{
   width:100%;height:100%;object-fit:contain;border-radius:50%;pointer-events:none;
 }
+/* small "something's claimable" indicator on the Rewards button */
+.reward-badge{
+  position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;
+  background:#ff5b5b;border:2px solid #12101d;
+}
+.reward-badge.hidden{display:none;}
 .add-btn.has-img{background:transparent;}
 .balance-pill{
   flex:1;display:flex;align-items:center;
@@ -767,14 +792,14 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
    .db-claim-btn/.db-skip-btn from the daily bonus modal above for a
    consistent look, just two new overlays + two new button styles.
 ══════════════════════════════════════════ */
-#outOfCoinsModal,#switchTableModal,#lobbyClaimModal{
+#outOfCoinsModal,#switchTableModal,#lobbyClaimModal,#rewardsModal{
   position:absolute;inset:0;z-index:220;
   background:rgba(0,0,0,.82);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;
   transition:opacity .3s;
 }
-#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show{opacity:1;pointer-events:all;}
+#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show,#rewardsModal.show{opacity:1;pointer-events:all;}
 .ooc-desc{color:rgba(244,236,216,.75);font-size:14px;line-height:1.5;margin-bottom:20px;}
 .ooc-secondary-btn{
   width:100%;padding:13px;border-radius:14px;
@@ -783,6 +808,26 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   transition:transform .08s;
 }
 .ooc-secondary-btn:active{transform:scale(.96);}
+
+/* ══════════════════════════════════════════
+   REWARDS HUB — a small menu, not a claim flow of its own. Each row just
+   opens the existing, already-built modal (dailyBonusModal /
+   lobbyClaimModal) — this avoids duplicating any claim logic.
+══════════════════════════════════════════ */
+.rewards-list{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.reward-row{
+  display:flex;align-items:center;gap:12px;width:100%;
+  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:12px 14px;cursor:pointer;text-align:left;
+  transition:transform .08s,background .15s;
+}
+.reward-row:active{transform:scale(.98);background:rgba(255,255,255,.1);}
+.reward-row.hidden{display:none;}
+.reward-row-icon{font-size:26px;flex:none;}
+.reward-row-text{flex:1;min-width:0;}
+.reward-row-title{color:#f4ecd8;font-weight:700;font-size:15px;}
+.reward-row-sub{color:rgba(244,236,216,.6);font-size:12px;margin-top:2px;}
+.reward-row-chevron{flex:none;color:rgba(244,236,216,.4);font-size:18px;}
 .ooc-secondary-btn:disabled{opacity:.4;cursor:default;}
 .ooc-tertiary-btn{
   width:100%;padding:13px;border-radius:14px;border:none;
