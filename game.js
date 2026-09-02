@@ -19,8 +19,12 @@ rescale();window.addEventListener('resize',rescale);
 const TABLES=[
   {
     id:'vegas',name:'Las Vegas',cls:'t-vegas',
-    minStack:500,minBet:5,maxBet:100,decks:2,
-    info:'Minimum Stack $500\nBet $5 – $100\n2 Decks',
+    minStack:0,minBet:5,maxBet:100,decks:2, // minStack:0 — no entry gate, deliberately
+      // the one table anyone can walk into regardless of bankroll. Betting
+      // itself is still protected: enterGame() already calls
+      // checkOutOfCoins() on entry, which will catch bankroll<minBet and
+      // show the same Out-of-Coins popup immediately.
+    info:'No Minimum Stake\nBet $5 – $100\n2 Decks',
     svg:`<svg viewBox="0 0 220 160" fill="none" xmlns="http://www.w3.org/2000/svg">
       <!-- neon Vegas skyline silhouette -->
       <g stroke="#bf60ff" stroke-width="2" fill="none">
@@ -210,6 +214,10 @@ const TABLES=[
     </svg>`
   },
 ];
+// The lowest minBet across every table — i.e. the actual floor for "can
+// this player afford to place a bet ANYWHERE right now." Computed, not
+// hardcoded, so it stays correct if table pricing ever changes.
+const CHEAPEST_MIN_BET=Math.min(...TABLES.map(t=>t.minBet));
 
 /* ── STATE ── */
 /* Last-known cloud state, cached locally purely to avoid the "flash of 1000"
@@ -725,7 +733,10 @@ function showLobbyClaimModal(){
  */
 function updateRewardsBadge(){
   const dbAvailable=CloudSync.isDailyBonusAvailable();
-  const oocAvailable=bankroll<=0&&bailoutLockoutUntil<=Date.now();
+  const oocAvailable=bankroll<CHEAPEST_MIN_BET&&bailoutLockoutUntil<=Date.now(); // was bankroll<=0 —
+    // that missed players like $4, who are just as stuck as $0 since they
+    // still can't cover even Vegas's $5 minimum bet anywhere. This checks
+    // against the real floor: the cheapest bet at the cheapest table.
   const oocRow=$('rewardsOocRow'),dailySub=$('rewardsDailySub'),badge=$('rewardsBadge');
   if(oocRow)oocRow.classList.toggle('hidden',!oocAvailable);
   if(dailySub)dailySub.textContent=dbAvailable?('Day '+CloudSync.nextDailyBonusDay()+' of 7'):'Claimed — back tomorrow';
