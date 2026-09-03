@@ -308,10 +308,26 @@ window.addEventListener('cloudsync-ready',()=>{
   });
 });
 
+/** Milliseconds until the daily bonus resets — UTC midnight, matching the
+    exact boundary isDailyBonusAvailable()/nextDailyBonusDay() already use
+    server-side, so the countdown always lands on the real reset moment. */
+function msUntilNextUTCDay(){
+  const now=new Date();
+  const tomorrowUTC=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,0,0,0);
+  return tomorrowUTC-now.getTime();
+}
+/** Like fmtCountdown, but for spans that can run up to ~24h (adds an hours
+    place instead of showing e.g. "437:12"). */
+function fmtCountdownLong(ms){
+  const totalSec=Math.max(0,Math.ceil(ms/1000));
+  const h=Math.floor(totalSec/3600),m=Math.floor((totalSec%3600)/60),s=totalSec%60;
+  return h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
+}
+
 function populateDailyBonusModal(){
   const day=CloudSync.nextDailyBonusDay();
+  const available=CloudSync.isDailyBonusAvailable();
   $('dbStreakLabel').textContent='Day '+day+' of 7';
-  $('dbAmount').textContent='+'+fmt(DAILY_BONUS_LADDER[day-1]);
   const ladder=$('dbLadder');
   ladder.innerHTML='';
   for(let i=1;i<=7;i++){
@@ -320,14 +336,38 @@ function populateDailyBonusModal(){
     pip.textContent=i<day?'✓':('D'+i);
     ladder.appendChild(pip);
   }
+  const claimBtn=$('dbClaimBtn');
+  if(available){
+    $('dbAmount').textContent='+'+fmt(DAILY_BONUS_LADDER[day-1]);
+    claimBtn.textContent='Claim';
+    claimBtn.classList.remove('collected');
+    $('dbSkipBtn').textContent='Maybe later';
+  }else{
+    $('dbAmount').textContent='Collected today ✓';
+    claimBtn.textContent='Next bonus in '+fmtCountdownLong(msUntilNextUTCDay());
+    claimBtn.classList.add('collected');
+    $('dbSkipBtn').textContent='Close';
+  }
 }
+/* keeps the "Next bonus in HH:MM:SS" line ticking while the modal is open —
+   cheap no-op the rest of the time since it only touches the DOM when
+   .show is present */
+setInterval(()=>{
+  if($('dailyBonusModal')?.classList.contains('show'))populateDailyBonusModal();
+},1000);
 function showDailyBonusModal(){
   populateDailyBonusModal();
   $('dailyBonusModal').classList.add('show');
 }
 async function claimDailyBonusFlow(){
+  if(!CloudSync.isDailyBonusAvailable()){
+    // cosmetic early-out only — claimDailyBonus() below re-checks this for
+    // real regardless, this just avoids a pointless round trip when the
+    // button's own "collected" state already told us the answer
+    showToast('Already claimed today — come back tomorrow!');
+    return;
+  }
   const btn=$('dbClaimBtn');
-  const original=btn.textContent;
   btn.textContent='…';btn.disabled=true;
   try{
     const result=await CloudSync.claimDailyBonus();
@@ -339,14 +379,19 @@ async function claimDailyBonusFlow(){
       updateUI();$('lobbyBal').textContent=fmt(bankroll);renderLobby();
       showToast('Day '+result.streak+' bonus: +'+fmt(result.granted)+'!');
     }
-    $('dailyBonusModal').classList.remove('show');
     $('dailyBonusBanner').classList.add('hidden');
     updateRewardsBadge();
+    // v1.9.3: re-render into the already-built "Collected today ✓ / Next
+    // bonus in HH:MM:SS" state instead of closing the modal outright — that
+    // state (and its own ticking countdown) already existed in
+    // populateDailyBonusModal(), it just never got shown because this used
+    // to close the modal before the player ever saw it.
+    populateDailyBonusModal();
   }catch(err){
     console.error('Daily bonus claim failed',err);
     showToast('Could not claim bonus — try again');
+    btn.textContent='Claim';btn.disabled=false; // only restore the pre-claim button here — on success, populateDailyBonusModal() above already set the correct final state, and stomping it with the old "Claim" text right after was the actual bug
   }
-  btn.textContent=original;btn.disabled=false;
 }
 
 
@@ -373,6 +418,11 @@ $('rewardsBtn')?.addEventListener('click',()=>{updateRewardsBadge();$('rewardsMo
 $('rewardsCloseBtn')?.addEventListener('click',()=>$('rewardsModal').classList.remove('show'));
 $('rewardsDailyRow')?.addEventListener('click',()=>{$('rewardsModal').classList.remove('show');showDailyBonusModal();});
 $('rewardsOocRow')?.addEventListener('click',()=>{$('rewardsModal').classList.remove('show');showLobbyClaimModal();});
+$('rewardsFreeChipRow')?.addEventListener('click',()=>{
+  if(nextFreeChipAt>Date.now())return; // not ready — the row's own countdown already tells them when; nothing to do here
+  $('rewardsModal').classList.remove('show');
+  claimFreeChipFlow();
+});
 
 /* ── ACCOUNT LINKING ── */
 function refreshAccountCard(){
@@ -737,10 +787,12 @@ function updateRewardsBadge(){
     // that missed players like $4, who are just as stuck as $0 since they
     // still can't cover even Vegas's $5 minimum bet anywhere. This checks
     // against the real floor: the cheapest bet at the cheapest table.
-  const oocRow=$('rewardsOocRow'),dailySub=$('rewardsDailySub'),badge=$('rewardsBadge');
+  const freeChipReady=nextFreeChipAt<=Date.now();
+  const oocRow=$('rewardsOocRow'),dailySub=$('rewardsDailySub'),badge=$('rewardsBadge'),freeChipSub=$('rewardsFreeChipSub');
   if(oocRow)oocRow.classList.toggle('hidden',!oocAvailable);
   if(dailySub)dailySub.textContent=dbAvailable?('Day '+CloudSync.nextDailyBonusDay()+' of 7'):'Claimed — back tomorrow';
-  if(badge)badge.classList.toggle('hidden',!(dbAvailable||oocAvailable));
+  if(freeChipSub)freeChipSub.textContent=freeChipReady?'Ready to claim!':('Next in '+fmtCountdown(nextFreeChipAt-Date.now()));
+  if(badge)badge.classList.toggle('hidden',!(dbAvailable||oocAvailable||freeChipReady));
 }
 setInterval(updateRewardsBadge,1000); // catches bankroll hitting $0 mid-game and the bailout lockout expiring, same as the other tickers above
 
@@ -772,7 +824,7 @@ function updateFreeChipUI(){
 }
 setInterval(updateFreeChipUI,1000);
 
-$('freeChipBtn')?.addEventListener('click',async()=>{
+async function claimFreeChipFlow(){
   if(nextFreeChipAt>Date.now())return; // not ready yet — server would reject this anyway, but no need for a round trip
   try{
     const result=await CloudSync.claimFreeChip();
@@ -781,18 +833,19 @@ $('freeChipBtn')?.addEventListener('click',async()=>{
       // drifted, or another tab already claimed it) — resync from
       // whatever the server actually says instead of trusting our guess.
       nextFreeChipAt=result.nextFreeChipAt||nextFreeChipAt;
-      updateFreeChipUI();
+      updateFreeChipUI();updateRewardsBadge();
       return;
     }
     bankroll+=result.granted;
     nextFreeChipAt=result.nextFreeChipAt;
     updateUI();$('lobbyBal').textContent=fmt(bankroll);
-    updateFreeChipUI();
+    updateFreeChipUI();updateRewardsBadge();
     showToast('+'+fmt(result.granted)+' free chips!');
   }catch(err){
     console.error('claimFreeChip failed',err);
   }
-});
+}
+$('freeChipBtn')?.addEventListener('click',claimFreeChipFlow);
 
 /** Drives BOTH the persistent lobby banner and the claim popup's button/hint — single source of truth, called every tick and whenever bailoutLockoutUntil changes. */
 function updateBailoutUI(){
