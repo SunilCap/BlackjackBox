@@ -134,6 +134,23 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   font-size:18px;
 }
 .free-chip-btn.ready #freeChipTimer{display:none;}
+.lobby-gems{
+  flex:none;display:flex;align-items:center;gap:3px;
+  color:#8fd8ff;font-weight:700;font-size:13px;
+  padding:3px 8px;border-radius:12px;background:rgba(0,180,220,.12);
+}
+.missions-btn{
+  flex:none;width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(212,175,55,.14);border:1.5px solid rgba(212,175,55,.5);
+  transition:transform .08s,background .2s,box-shadow .2s;
+  font-size:18px;line-height:1;position:relative;
+}
+.missions-btn:active{transform:scale(.93);}
+.missions-btn.has-claimable{
+  background:#ffd76b;border-color:#ffd76b;
+  box-shadow:0 0 0 3px rgba(255,215,107,.25);
+}
 .lobby-coin{
   width:36px;height:36px;border-radius:50%;flex:none;
   background:radial-gradient(circle at 34% 28%,#ffe07a,#d4af37 58%,#8a6610 100%);
@@ -792,14 +809,14 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
    .db-claim-btn/.db-skip-btn from the daily bonus modal above for a
    consistent look, just two new overlays + two new button styles.
 ══════════════════════════════════════════ */
-#outOfCoinsModal,#switchTableModal,#lobbyClaimModal,#rewardsModal{
+#outOfCoinsModal,#switchTableModal,#lobbyClaimModal,#rewardsModal,#missionsModal{
   position:absolute;inset:0;z-index:220;
   background:rgba(0,0,0,.82);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;
   transition:opacity .3s;
 }
-#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show,#rewardsModal.show{opacity:1;pointer-events:all;}
+#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show,#rewardsModal.show,#missionsModal.show{opacity:1;pointer-events:all;}
 .ooc-desc{color:rgba(244,236,216,.75);font-size:14px;line-height:1.5;margin-bottom:20px;}
 .ooc-secondary-btn{
   width:100%;padding:13px;border-radius:14px;
@@ -837,6 +854,73 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   transition:transform .08s;
 }
 .ooc-tertiary-btn:active{transform:scale(.96);}
+
+/* ══════════════════════════════════════════
+   MISSIONS — daily set (gated behind first-blackjack-of-day) + weekly +
+   gem-funded table unlocks. Reuses .db-inner/.db-icon/.db-title from the
+   daily bonus modal for a consistent frame; everything below that is new.
+══════════════════════════════════════════ */
+.missions-inner{max-height:calc(100% - 40px);display:flex;flex-direction:column;}
+.missions-gem-line{color:#8fd8ff;font-weight:700;font-size:14px;margin-bottom:14px;}
+.missions-locked-note{
+  color:#ffe07a;font-size:13px;font-weight:600;text-align:center;
+  background:rgba(255,224,122,.08);border:1px solid rgba(255,224,122,.25);
+  border-radius:12px;padding:10px 12px;margin-bottom:14px;
+}
+.missions-locked-note.hidden{display:none;}
+.missions-scroll{overflow-y:auto;flex:1;min-height:0;margin:0 -4px;padding:0 4px;}
+.mission-section-label{
+  color:rgba(244,236,216,.5);font-size:11px;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;text-align:left;margin:14px 0 8px;
+}
+.mission-section-label:first-child{margin-top:0;}
+.mission-section-sub{
+  font-weight:600;letter-spacing:0;text-transform:none;color:rgba(244,236,216,.32);
+}
+.missions-list{display:flex;flex-direction:column;gap:8px;}
+.mission-row{
+  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:10px 12px;text-align:left;
+}
+.mission-row.claimable{border-color:rgba(255,215,107,.6);background:rgba(255,215,107,.08);}
+.mission-row.claimed{opacity:.5;}
+.mission-row-top{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.mission-row-icon{font-size:20px;flex:none;}
+.mission-row-text{flex:1;min-width:0;}
+.mission-row-title{color:#f4ecd8;font-weight:700;font-size:14px;}
+.mission-row-sub{color:rgba(244,236,216,.6);font-size:11px;margin-top:1px;}
+.mission-progress-track{
+  height:6px;border-radius:3px;background:rgba(0,0,0,.35);overflow:hidden;margin-bottom:8px;
+}
+.mission-progress-fill{height:100%;background:linear-gradient(90deg,#ffd76b,#d4af37);border-radius:3px;transition:width .3s;}
+.mission-claim-btn{
+  width:100%;padding:8px;border-radius:10px;border:none;cursor:pointer;
+  font-weight:800;font-size:13px;transition:transform .08s;
+  background:rgba(255,255,255,.08);color:rgba(244,236,216,.4);
+}
+.mission-claim-btn:active{transform:scale(.96);}
+.mission-claim-btn.ready{
+  background:linear-gradient(175deg,#ffd76b,#d4af37);color:#1a1105;
+  box-shadow:0 3px 12px rgba(212,175,55,.4);
+}
+.mission-claim-btn:disabled{cursor:default;}
+.table-unlock-row{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);
+  border-radius:14px;padding:10px 12px;
+}
+.table-unlock-name{flex:1;min-width:0;color:#f4ecd8;font-weight:700;font-size:14px;}
+.table-unlock-sub{color:rgba(244,236,216,.55);font-size:11px;margin-top:1px;}
+.table-unlock-btn{
+  flex:none;padding:8px 12px;border-radius:10px;border:none;cursor:pointer;
+  background:rgba(0,180,220,.18);border:1.5px solid rgba(0,180,220,.5);
+  color:#8fd8ff;font-weight:800;font-size:12px;transition:transform .08s;
+}
+.table-unlock-btn:active{transform:scale(.94);}
+.table-unlock-btn:disabled{opacity:.35;cursor:default;}
+.table-unlock-btn.active{
+  background:rgba(76,217,100,.18);border-color:rgba(76,217,100,.5);color:#8ef0a0;
+}
 .ooc-hint{
   color:rgba(255,179,71,.85);font-size:12px;font-weight:600;
   margin:-4px 0 10px;font-variant-numeric:tabular-nums;
