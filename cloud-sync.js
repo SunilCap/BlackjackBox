@@ -67,6 +67,7 @@ function cacheStateLocally(state) {
     localStorage.setItem(CLOUD_CACHE_KEY, JSON.stringify({
       bankroll: state.bankroll, removeAds: state.removeAds, vipUntil: state.vipUntil,
       dailyStreak: state.dailyStreak, lastDailyBonusClaim: state.lastDailyBonusClaim,
+      gems: state.gems, missions: state.missions,
     }));
   } catch (e) { /* storage unavailable — cache is a nice-to-have, safe to skip */ }
 }
@@ -438,35 +439,52 @@ function getAccountLabel() {
  * same as the trade-off already accepted for regular in-session play.
  */
 const HANDS_PER_SYNC_BATCH = 5;
-let currentBatch = { delta: 0, wagered: 0, hands: 0 };
+// `hands` is now an ORDERED array, not just an aggregate count — each entry
+// is one round's outcome. Order is preserved within a batch so the server
+// can walk it sequentially for streak tracking; the array (not just totals)
+// is what makes per-round mission signals (wins, blackjacks, which table)
+// derivable server-side at all, since the old {delta,wagered} summary
+// collapsed 5 rounds into one number and threw the rest away.
+let currentBatch = { hands: [] };
 let syncQueue = []; // closed batches waiting to be sent, in order
 let syncInFlight = false;
 
-function recordHandForSync(delta, wagered) {
-  currentBatch.delta += delta;
-  currentBatch.wagered += wagered;
-  currentBatch.hands += 1;
-  if (currentBatch.hands >= HANDS_PER_SYNC_BATCH) {
+/**
+ * @param {number} delta - net bankroll change this round
+ * @param {number} wagered - total wagered this round
+ * @param {{isBlackjack?:boolean, tableId?:string}} [meta] - isBlackjack: did
+ *   this round include a natural blackjack win (game.js checks this via the
+ *   same stats.bj signal the in-game stats panel already uses). tableId:
+ *   TABLES[].id for whichever table this round was played at.
+ */
+function recordHandForSync(delta, wagered, meta = {}) {
+  currentBatch.hands.push({
+    delta,
+    wagered,
+    isBlackjack: !!meta.isBlackjack,
+    tableId: meta.tableId || null,
+  });
+  if (currentBatch.hands.length >= HANDS_PER_SYNC_BATCH) {
     closeBatchAndFlush();
   }
 }
 
 /** Force whatever's accumulated so far out immediately — call this when leaving a table. */
 function flushPendingHandSync() {
-  if (currentBatch.hands > 0) closeBatchAndFlush();
+  if (currentBatch.hands.length > 0) closeBatchAndFlush();
 }
 
 function closeBatchAndFlush() {
-  const delta = currentBatch.delta;
+  const hands = currentBatch.hands;
+  const delta = hands.reduce((sum, h) => sum + h.delta, 0); // for the optimistic local event below
   syncQueue.push({
-    delta,
-    wagered: currentBatch.wagered,
+    hands,
     // idempotency token: lets a retried call that actually succeeded server-side
     // (but whose response we never received) get recognized and no-op'd rather
     // than double-applied.
     token: `${currentUid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   });
-  currentBatch = { delta: 0, wagered: 0, hands: 0 };
+  currentBatch = { hands: [] };
   // Tell game.js to account for this delta RIGHT NOW, before the network
   // call even goes out — not after it resolves. The live Firestore listener
   // (a separate websocket) can receive the server's write and fire before
@@ -487,7 +505,7 @@ async function processSyncQueue() {
   try {
     await authReady;
     const fn = httpsCallable(functions, "syncBankrollDelta");
-    const result = await fn({ delta: batch.delta, wagered: batch.wagered, syncToken: batch.token });
+    const result = await fn({ hands: batch.hands, syncToken: batch.token });
     syncQueue.shift(); // sent successfully — drop it and try the next one
     // This exact change is ALREADY reflected in local `bankroll` — it applied
     // instantly during gameplay, before this network call even started. The
@@ -534,12 +552,25 @@ window.addEventListener('pagehide', () => {
 // when there's nothing pending — flushPendingHandSync() no-ops in that case.
 setInterval(flushPendingHandSync, 30000);
 
+/** Claim a completed mission ('playHands' | 'winHands' | 'wagerTotal' | 'weekly'). Server verifies eligibility. */
+async function claimMission(missionKey) {
+  await authReady;
+  return (await httpsCallable(functions, "claimMission")({ missionKey })).data;
+}
+
+/** Spend gems to unlock a table's entry-minimum for 1hr (stackable — extends existing window). */
+async function unlockTableWithGems(tableId) {
+  await authReady;
+  return (await httpsCallable(functions, "unlockTableWithGems")({ tableId })).data;
+}
+
 window.CloudSync = {
   init, getState, buyOnWeb, buyOnAndroid, isPlayBillingAvailable,
   claimDailyBonus, isDailyBonusAvailable, nextDailyBonusDay,
   claimAdReward, claimZeroBailout, claimFreeChip,
   linkWithGoogle, linkWithEmail, isAccountLinked, getAccountLabel,
   recordHandForSync, flushPendingHandSync,
+  claimMission, unlockTableWithGems,
 };
 // game.js is a classic (non-module) script and runs BEFORE this module finishes loading,
 // so it can't just check `if (window.CloudSync)` at the top level — it listens for this

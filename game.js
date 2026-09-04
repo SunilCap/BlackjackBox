@@ -244,6 +244,8 @@ const DEBUG_MODE=true;
 let bankroll=(_cachedState&&typeof _cachedState.bankroll==='number')?_cachedState.bankroll:1000,startBR=1000,shoe=[],state="betting";
 let cloudRemoveAds=_cachedState?.removeAds||false,cloudVipUntil=_cachedState?.vipUntil||0,cloudCoinsMerged=0;
 let roundStartBankroll=0; // bankroll snapshot taken at the top of startRound() — endCleanup() diffs against this
+let roundStartBJCount=0; // stats.bj snapshot taken at the top of startRound() — endCleanup() diffs against this to tell CloudSync whether THIS round included a natural blackjack, for the mission "first blackjack of the day" gate
+let gems=0, latestMissions=null, tableUnlocks={}; // server-authoritative mirrors, same pattern as bankroll/bailoutLockoutUntil/nextFreeChipAt — refreshed from every cloud snapshot and every claim/unlock response
 
 const DAILY_BONUS_LADDER=[500,750,1000,1250,1500,1750,2000];
 let dailyBonusPopupShown=false;
@@ -287,6 +289,15 @@ window.addEventListener('cloudsync-ready',()=>{
     cloudRemoveAds=!!cloudState.removeAds;
     cloudVipUntil=cloudState.vipUntil||0;
     refreshAccountCard();
+
+    // missions + gems: plain read-through, same trust model as bailout/free-chip
+    // above — server is authoritative, this is just a local mirror for UI.
+    gems=cloudState.gems||0;
+    latestMissions=cloudState.missions||null;
+    tableUnlocks=cloudState.tableUnlocks||{};
+    updateGemsUI();
+    updateMissionsBadge();
+    if($('missionsModal')?.classList.contains('show'))renderMissionsModal(); // live-refresh if it's open when a snapshot lands
 
     // daily bonus: show/hide the lobby fallback button, and auto-popup once per load
     const dbAvailable=CloudSync.isDailyBonusAvailable();
@@ -845,7 +856,138 @@ async function claimFreeChipFlow(){
     console.error('claimFreeChip failed',err);
   }
 }
-$('freeChipBtn')?.addEventListener('click',claimFreeChipFlow);
+// (top-bar quick-claim button was repurposed to Missions — see below.
+// Free Chip is still reachable via the bottom Rewards hub's rewardsFreeChipRow,
+// wired above; claimFreeChipFlow itself is unchanged.)
+
+/* ── MISSIONS ── */
+const TABLE_UNLOCK_COST_GEMS={paris:5,singapore:5,melbourne:5,monaco:10}; // mirrors index.js — display-only, server re-validates on claim
+function tableNameById(id){return TABLES.find(t=>t.id===id)?.name||id;}
+
+function updateGemsUI(){
+  const a=$('lobbyGemsAmt'),b=$('missionsGemsAmt');
+  if(a)a.textContent=gems;
+  if(b)b.textContent=gems;
+}
+
+function updateMissionsBadge(){
+  const badge=$('missionsBadge');
+  if(!badge||!latestMissions)return;
+  const m=latestMissions;
+  const anyClaimable = m.blackjackUnlocked && (
+    (m.playHands&&!m.playHands.claimed&&m.playHands.current>=m.playHands.target) ||
+    (m.winHands&&!m.winHands.claimed&&m.winHands.current>=m.winHands.target) ||
+    (m.wagerTotal&&!m.wagerTotal.claimed&&m.wagerTotal.current>=m.wagerTotal.target) ||
+    (m.weekly&&!m.weekly.claimed&&(m.weekly.current||0)>=m.weekly.target)
+  );
+  badge.classList.toggle('hidden',!anyClaimable);
+  $('missionsBtn')?.classList.toggle('has-claimable',!!anyClaimable);
+}
+
+function missionRowHTML(key,icon,title,mission,currencyLabel){
+  const claimable=mission.current>=mission.target&&!mission.claimed;
+  const pct=Math.min(100,Math.round((mission.current/mission.target)*100));
+  const rewardText=currencyLabel==='gems'?`💎 ${mission.reward}`:fmt(mission.reward);
+  return `
+    <div class="mission-row${claimable?' claimable':''}${mission.claimed?' claimed':''}">
+      <div class="mission-row-top">
+        <div class="mission-row-icon">${icon}</div>
+        <div class="mission-row-text">
+          <div class="mission-row-title">${title}</div>
+          <div class="mission-row-sub">${mission.current}/${mission.target} — reward ${rewardText}</div>
+        </div>
+      </div>
+      <div class="mission-progress-track"><div class="mission-progress-fill" style="width:${pct}%"></div></div>
+      <button class="mission-claim-btn${claimable?' ready':''}" data-mission="${key}" ${mission.claimed?'disabled':''}>
+        ${mission.claimed?'Claimed':claimable?'Claim':'In progress'}
+      </button>
+    </div>`;
+}
+
+function renderMissionsModal(){
+  const dailyList=$('missionsDailyList'),weeklyList=$('missionsWeeklyList'),unlockList=$('tableUnlockList'),lockedNote=$('missionsLockedNote');
+  if(!dailyList)return;
+
+  if(!latestMissions){
+    dailyList.innerHTML='<div class="mission-row-sub">Play a hand to get started.</div>';
+    weeklyList.innerHTML='';unlockList.innerHTML='';
+    lockedNote?.classList.add('hidden');
+    return;
+  }
+  const m=latestMissions;
+  lockedNote?.classList.toggle('hidden',!!m.blackjackUnlocked);
+
+  if(!m.blackjackUnlocked){
+    dailyList.innerHTML='';weeklyList.innerHTML='';
+  } else {
+    dailyList.innerHTML=
+      missionRowHTML('playHands','🃏','Play 5 hands',m.playHands,'coins')+
+      missionRowHTML('winHands','🏆','Win 3 hands',m.winHands,'coins')+
+      missionRowHTML('wagerTotal','💰','Wager '+fmt(m.wagerTotal.target),m.wagerTotal,'gems');
+    weeklyList.innerHTML=missionRowHTML('weekly','📅','Play 3 different tables',
+      {...m.weekly,current:m.weekly.current||0},'coins');
+  }
+
+  // gem-funded table unlocks — every table with a listed cost except Vegas
+  // (no entry minimum there, nothing to unlock)
+  const now=Date.now();
+  unlockList.innerHTML=Object.entries(TABLE_UNLOCK_COST_GEMS).map(([id,cost])=>{
+    const expiresAt=tableUnlocks[id]||0;
+    const active=expiresAt>now;
+    return `
+      <div class="table-unlock-row">
+        <div style="flex:1;min-width:0;">
+          <div class="table-unlock-name">${tableNameById(id)}</div>
+          <div class="table-unlock-sub">${active?('Unlocked — '+fmtCountdown(expiresAt-now)+' left'):(cost+' gems / hr')}</div>
+        </div>
+        <button class="table-unlock-btn${active?' active':''}" data-unlock="${id}" ${gems<cost?'disabled':''}>
+          ${active?'+1hr':'Unlock'}
+        </button>
+      </div>`;
+  }).join('');
+}
+
+async function claimMissionFlow(missionKey){
+  try{
+    const result=await CloudSync.claimMission(missionKey);
+    if(!result.ok){
+      if(result.incomplete)renderMissionsModal(); // stale local view — resync from what we've got, no toast needed
+      return;
+    }
+    if(result.currency==='gems'){gems=result.gems;}
+    else{bankroll=result.bankroll;updateUI();$('lobbyBal').textContent=fmt(bankroll);}
+    updateGemsUI();
+    showToast(result.currency==='gems'?('+'+result.granted+' gems!'):('+'+fmt(result.granted)+'!'));
+    renderMissionsModal();updateMissionsBadge();
+  }catch(err){
+    console.error('claimMission failed',err);
+  }
+}
+
+async function unlockTableFlow(tableId){
+  try{
+    const result=await CloudSync.unlockTableWithGems(tableId);
+    if(!result.ok){
+      if(result.insufficientGems)showToast("Not enough gems");
+      return;
+    }
+    gems=result.gems;
+    tableUnlocks={...tableUnlocks,[tableId]:result.expiresAt};
+    updateGemsUI();renderMissionsModal();
+    showToast(tableNameById(tableId)+' unlocked for 1hr!');
+  }catch(err){
+    console.error('unlockTableWithGems failed',err);
+  }
+}
+
+$('missionsBtn')?.addEventListener('click',()=>{renderMissionsModal();$('missionsModal').classList.add('show');});
+$('missionsCloseBtn')?.addEventListener('click',()=>$('missionsModal').classList.remove('show'));
+$('missionsScroll')?.addEventListener('click',(e)=>{
+  const claimBtn=e.target.closest('[data-mission]');
+  if(claimBtn&&!claimBtn.disabled){claimMissionFlow(claimBtn.dataset.mission);return;}
+  const unlockBtn=e.target.closest('[data-unlock]');
+  if(unlockBtn&&!unlockBtn.disabled){unlockTableFlow(unlockBtn.dataset.unlock);}
+});
 
 /** Drives BOTH the persistent lobby banner and the claim popup's button/hint — single source of truth, called every tick and whenever bailoutLockoutUntil changes. */
 function updateBailoutUI(){
@@ -1245,6 +1387,7 @@ function resetTable(){
   // no corresponding debit ever recorded) — real losses that never reached
   // the server despite succeeding with no errors.
   roundStartBankroll=bankroll;
+  roundStartBJCount=stats.bj;
   state="betting";updateUI();
 }
 
@@ -2034,7 +2177,10 @@ function endCleanup(){
   // net change for this exact round, whichever path got us here (normal
   // resolution, split reveal, or single-hand surrender all call endCleanup()
   // as their one shared exit) — batched and sent to the server every 5 rounds.
-  window.CloudSync?.recordHandForSync?.(bankroll-roundStartBankroll, computeRoundWagered());
+  window.CloudSync?.recordHandForSync?.(bankroll-roundStartBankroll, computeRoundWagered(), {
+    isBlackjack: stats.bj > roundStartBJCount,
+    tableId: activeTable?.id,
+  });
   setTimeout(()=>{state="betting";resetTable();checkOutOfCoins();},2400);
 }
 
