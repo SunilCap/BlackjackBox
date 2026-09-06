@@ -297,8 +297,15 @@ window.addEventListener('cloudsync-ready',()=>{
     latestMissions=cloudState.missions||null;
     tableUnlocks=cloudState.tableUnlocks||{};
     if(!wasMissionsUnlocked && latestMissions?.blackjackUnlocked){
-      showToast('🎯 Daily missions unlocked! Progress starts now.');
+      // Don't show the toast yet if a round's hand-result animations are
+      // still playing (state stays off "betting" for the full sequence,
+      // see endCleanup()'s 2400ms setTimeout) — the snapshot that flips
+      // blackjackUnlocked almost always lands mid-animation, right after
+      // the unlocking hand. Queue it; the betting-state check below and
+      // the one at the bottom of that setTimeout both drain the flag.
+      pendingMissionsUnlockToast=true;
     }
+    maybeFireMissionsUnlockToast();
     updateGemsUI();
     updateMissionsBadge();
     if($('missionsModal')?.classList.contains('show'))renderMissionsModal(); // live-refresh if it's open when a snapshot lands
@@ -600,6 +607,27 @@ function renderLobby(){
   // update chip tray for this table
   updateChipTray(chips);
 }
+
+// Keeps the "🔓 Gem-unlocked — Xm left" line live instead of frozen at
+// whatever it read when renderLobby() last ran (a full re-render every
+// second would work too, but reloads the banner <img> and rebinds every
+// listener on tableCard for a one-line text tick — wasteful and risks a
+// visible flash). Text-only patch each second; only falls back to a full
+// renderLobby() on the one tick where the unlock actually expires, since
+// that flips locked/Play-button/gem-button state and isn't just text.
+function tickGemUnlockCountdown(){
+  const tbl=TABLES[currentTableIdx];
+  if(!tbl)return;
+  const infoLockedEl=document.querySelector('#tableCard .info-locked.unlock-active');
+  if(!infoLockedEl)return; // not currently showing a gem-unlock countdown — nothing to tick
+  const remaining=(tableUnlocks[tbl.id]||0)-Date.now();
+  if(remaining>0){
+    infoLockedEl.textContent='🔓 Gem-unlocked — '+fmtCountdown(remaining)+' left';
+  } else {
+    renderLobby(); // just expired — re-render so locked state/Play button/gem button all catch up together
+  }
+}
+setInterval(tickGemUnlockCountdown,1000);
 
 function neonColor(cls){
   return{
@@ -1271,6 +1299,20 @@ function showToast(msg){
   const toastEl=$('toast');toastEl.textContent=msg;toastEl.classList.add('show');
   if(toastTimer)clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1400);
+}
+
+// Fires only once the table is actually idle (state==="betting") — i.e. not
+// mid-deal and not mid hand-result-reveal — so it never gets stomped by or
+// stomps a round's own win/lose/blackjack toast, and never appears buried
+// under the result overlay animation. See the two call sites: right when
+// the snapshot arrives (covers the player being idle in the lobby) and at
+// the tail of endCleanup()'s setTimeout (covers the player mid-round).
+let pendingMissionsUnlockToast=false;
+function maybeFireMissionsUnlockToast(){
+  if(pendingMissionsUnlockToast && state==='betting'){
+    pendingMissionsUnlockToast=false;
+    showToast('🎯 Daily missions unlocked! Progress starts now.');
+  }
 }
 
 if(DEBUG_MODE){
@@ -2182,7 +2224,7 @@ function endCleanup(){
     isBlackjack: stats.bj > roundStartBJCount,
     tableId: activeTable?.id,
   });
-  setTimeout(()=>{state="betting";resetTable();checkOutOfCoins();},2400);
+  setTimeout(()=>{state="betting";resetTable();checkOutOfCoins();maybeFireMissionsUnlockToast();},2400);
 }
 
 /* ══════════════════════════════════════════
