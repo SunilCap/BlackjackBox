@@ -170,9 +170,9 @@ const TABLES=[
     </svg>`
   },
   {
-    id:'monaco',name:'Monaco',cls:'t-monaco',
-    minStack:100000,minBet:1000,maxBet:10000,decks:8,
-    info:'Minimum Stack $100,000\nBet $1,000 – $10,000\n8 Decks',
+    id:'monaco',name:'VIP Lounge',cls:'t-monaco', // id/cls kept as 'monaco' internally — only the display name changed — so gem-unlock costs, Firestore tableUnlocks keys, and CSS classes all keep working unmodified
+    minStack:100000,minBet:1000,maxBet:10000,decks:8, // minBet/maxBet here are just the fallback shown before applyVipScaling() first runs — actual bet range is balance-scaled, see applyVipScaling() near getTableChips()
+    info:'Minimum Stack $100,000\nBet scales with your bankroll\n8 Decks',
     svg:`<svg viewBox="0 0 220 160" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g stroke="#ffd060" stroke-width="2" fill="none">
         <!-- Casino de Monte Carlo classical facade -->
@@ -243,6 +243,7 @@ const DEBUG_MODE=true;
 
 let bankroll=(_cachedState&&typeof _cachedState.bankroll==='number')?_cachedState.bankroll:1000,startBR=1000,shoe=[],state="betting";
 let cloudRemoveAds=_cachedState?.removeAds||false,cloudVipUntil=_cachedState?.vipUntil||0,cloudCoinsMerged=0;
+let cloudUnlockedTables=_cachedState?.unlockedTables||[]; // permanent table unlocks from a purchase (e.g. vip_bundle → 'monaco') — separate from bankroll gating and the hourly gem unlock
 let roundStartBankroll=0; // bankroll snapshot taken at the top of startRound() — endCleanup() diffs against this
 let roundStartBJCount=0; // stats.bj snapshot taken at the top of startRound() — endCleanup() diffs against this to tell CloudSync whether THIS round included a natural blackjack, for the mission "first blackjack of the day" gate
 let gems=0, latestMissions=null, latestCareer=null, tableUnlocks={}; // server-authoritative mirrors, same pattern as bankroll/bailoutLockoutUntil/nextFreeChipAt — refreshed from every cloud snapshot and every claim/unlock response
@@ -287,6 +288,7 @@ window.addEventListener('cloudsync-ready',()=>{
       }
     }
     cloudRemoveAds=!!cloudState.removeAds;
+    cloudUnlockedTables=cloudState.unlockedTables||[];
     cloudVipUntil=cloudState.vipUntil||0;
     refreshAccountCard();
 
@@ -546,16 +548,18 @@ const CITY_IMG={
 
 function renderLobby(){
   const tbl=TABLES[currentTableIdx];
+  applyVipScaling(tbl); // no-op for every table except VIP/Monaco — see applyVipScaling()
   const bg=$('lobbyBg');
   bg.className='lobby-bg '+tbl.id;
 
   const now=Date.now();
   const unlockExpiresAt=tableUnlocks[tbl.id]||0;
   const gemUnlockActive=unlockExpiresAt>now;
+  const permanentlyUnlocked=cloudUnlockedTables.includes(tbl.id); // e.g. from the vip_bundle purchase — this was previously never checked here, so buying permanent VIP access didn't actually unlock the table client-side
   // gem unlock waives the entry MINIMUM only (not per-hand bet minimums,
   // not real coin balance) — so a table under its minStack still counts
-  // as playable while a gem unlock is active.
-  const locked=bankroll<tbl.minStack && !gemUnlockActive;
+  // as playable while a gem unlock is active. Same for a permanent purchase.
+  const locked=bankroll<tbl.minStack && !gemUnlockActive && !permanentlyUnlocked;
   const gemCost=TABLE_UNLOCK_COST_GEMS[tbl.id]; // undefined for tables with no entry minimum (e.g. Vegas) — nothing to unlock there
   const showGemUnlock=locked && gemCost!=null;
 
@@ -626,7 +630,28 @@ function neonColor(cls){
   }[cls]||'#fff';
 }
 
+// VIP table (Monaco) — the one table whose bet range/chip set isn't fixed
+// like the other four's. It scales off the player's CURRENT bankroll —
+// 0.1% / 0.5% / 2% / 10%, each rounded to the nearest $100 — so the chips
+// stay meaningful instead of looking like pocket change at a $100k+
+// balance. Recomputed on every lobby view and on entry (not live
+// mid-hand — same "stable per visit" reasoning as mission rewards, so a
+// win/loss streak mid-round can't shift the chip set under the player).
+// Mutates the shared TABLES entry directly (minBet/maxBet/info/_vipChips)
+// so every existing consumer — bet validation, the in-game tableStrip
+// text, the lobby's info text — picks up the fresh numbers for free, with
+// no changes needed anywhere else in the file.
+function applyVipScaling(tbl){
+  if(tbl.id!=='monaco')return;
+  const round100=n=>Math.max(100,Math.round(n/100)*100);
+  const c1=round100(bankroll*0.001), c2=round100(bankroll*0.005), c3=round100(bankroll*0.02), c4=round100(bankroll*0.10);
+  tbl.minBet=c1;tbl.maxBet=c4;
+  tbl._vipChips=[c1,c2,c3,c4];
+  tbl.info=`Minimum Stack $100,000\nBet ${fmt(c1)} – ${fmt(c4)}\n8 Decks`;
+}
+
 function getTableChips(t){
+  if(t.id==='monaco'&&t._vipChips)return t._vipChips; // VIP's chip set is balance-scaled, not derived from a fixed min/maxBet spread — see applyVipScaling()
   // all 4 chips must be <= maxBet, spread sensibly across the range
   const max=t.maxBet, min=t.minBet;
   // build 4 ascending values: minBet, ~25%, ~60%, maxBet
@@ -1163,6 +1188,7 @@ function updateBailoutUI(){
 setInterval(updateBailoutUI,1000); // cheap (one timestamp comparison + text update) — safe to just always run
 
 function enterGame(tbl){
+  applyVipScaling(tbl); // must run before tableStrip is set below, and before getTableChips() — see applyVipScaling()
   activeTable=tbl;
   currentTableIdx=TABLES.indexOf(tbl); // keep the lobby carousel pointing at whichever table we actually entered — otherwise returning to the lobby (e.g. from OOC) can show a DIFFERENT table's lock status than the one the player cares about
   $('rulesModal').classList.remove('show');
