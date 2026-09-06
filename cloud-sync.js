@@ -558,6 +558,12 @@ async function claimMission(missionKey) {
   return (await httpsCallable(functions, "claimMission")({ missionKey })).data;
 }
 
+/** Claim the current level of a permanent career track ('handsPlayed' | 'blackjacks'). Server verifies eligibility and advances the level. */
+async function claimCareerMission(track) {
+  await authReady;
+  return (await httpsCallable(functions, "claimCareerMission")({ track })).data;
+}
+
 /** Spend gems to unlock a table's entry-minimum for 1hr (stackable — extends existing window). */
 async function unlockTableWithGems(tableId) {
   await authReady;
@@ -570,7 +576,7 @@ window.CloudSync = {
   claimAdReward, claimZeroBailout, claimFreeChip,
   linkWithGoogle, linkWithEmail, isAccountLinked, getAccountLabel,
   recordHandForSync, flushPendingHandSync,
-  claimMission, unlockTableWithGems,
+  claimMission, claimCareerMission, unlockTableWithGems,
 };
 // game.js is a classic (non-module) script and runs BEFORE this module finishes loading,
 // so it can't just check `if (window.CloudSync)` at the top level — it listens for this

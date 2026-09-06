@@ -245,7 +245,7 @@ let bankroll=(_cachedState&&typeof _cachedState.bankroll==='number')?_cachedStat
 let cloudRemoveAds=_cachedState?.removeAds||false,cloudVipUntil=_cachedState?.vipUntil||0,cloudCoinsMerged=0;
 let roundStartBankroll=0; // bankroll snapshot taken at the top of startRound() — endCleanup() diffs against this
 let roundStartBJCount=0; // stats.bj snapshot taken at the top of startRound() — endCleanup() diffs against this to tell CloudSync whether THIS round included a natural blackjack, for the mission "first blackjack of the day" gate
-let gems=0, latestMissions=null, tableUnlocks={}; // server-authoritative mirrors, same pattern as bankroll/bailoutLockoutUntil/nextFreeChipAt — refreshed from every cloud snapshot and every claim/unlock response
+let gems=0, latestMissions=null, latestCareer=null, tableUnlocks={}; // server-authoritative mirrors, same pattern as bankroll/bailoutLockoutUntil/nextFreeChipAt — refreshed from every cloud snapshot and every claim/unlock response
 
 const DAILY_BONUS_LADDER=[500,750,1000,1250,1500,1750,2000];
 let dailyBonusPopupShown=false;
@@ -294,6 +294,7 @@ window.addEventListener('cloudsync-ready',()=>{
     // above — server is authoritative, this is just a local mirror for UI.
     gems=cloudState.gems||0;
     latestMissions=cloudState.missions||null;
+    latestCareer=cloudState.career||null;
     tableUnlocks=cloudState.tableUnlocks||{};
     updateGemsUI();
     updateMissionsBadge();
@@ -907,13 +908,16 @@ function updateGemsUI(){
 function updateMissionsBadge(){
   const badge=$('missionsBadge');
   if(!badge)return;
-  const m=latestMissions;
-  const anyClaimable = !!m?.blackjackUnlocked && (
+  const m=latestMissions,c=latestCareer;
+  const anyClaimable = (!!m?.blackjackUnlocked && (
     (m.playHands&&!m.playHands.claimed&&m.playHands.current>=m.playHands.target) ||
     (m.winHands&&!m.winHands.claimed&&m.winHands.current>=m.winHands.target) ||
     (m.wagerTotal&&!m.wagerTotal.claimed&&m.wagerTotal.current>=m.wagerTotal.target) ||
     (m.weekly&&!m.weekly.claimed&&(m.weekly.current||0)>=m.weekly.target)
-  );
+  )) || (!!c && (
+    (c.handsPlayed&&!c.handsPlayed.maxed&&c.handsPlayed.current>=c.handsPlayed.target) ||
+    (c.blackjacks&&!c.blackjacks.maxed&&c.blackjacks.current>=c.blackjacks.target)
+  )); // career claimable also lights the badge — it's still "something to claim in the modal" — but deliberately NOT part of allClaimed below, since career never fully "completes" like the daily+weekly cycle does
   badge.classList.toggle('hidden',!anyClaimable);
   $('missionsBtn')?.classList.toggle('has-claimable',!!anyClaimable);
 
@@ -923,7 +927,8 @@ function updateMissionsBadge(){
   // been CLAIMED (not just completed — reaching target but not claiming
   // yet should still read as "in progress"). Stats is simply unreachable
   // from the game screen while a challenge is active; it's still reachable
-  // from the lobby's own stats button either way.
+  // from the lobby's own stats button either way. Career is intentionally
+  // excluded from this — it's permanent, not part of "this cycle."
   const allClaimed = !!m && !!m.playHands?.claimed && !!m.winHands?.claimed &&
     !!m.wagerTotal?.claimed && !!m.weekly?.claimed;
   const challengeActive = !!m?.blackjackUnlocked && !allClaimed;
@@ -953,31 +958,79 @@ function missionRowHTML(key,icon,title,mission,currencyLabel){
     </div>`;
 }
 
+// Career rows are DELIBERATELY styled/structured differently from
+// missionRowHTML above (see .career-row in style.css) — a level badge
+// instead of a claimed/unclaimed pill, no "resets tomorrow" implication,
+// since these never reset and the ladder just keeps re-arming at a higher
+// threshold forever. `entry` is a career track off latestCareer
+// (current/level/target/reward/maxed — see ensureCareerFresh in index.js).
+function careerRowHTML(track,icon,title,entry){
+  const lifetime=(entry.current||0).toLocaleString();
+  if(entry.maxed){
+    return `
+      <div class="career-row maxed">
+        <div class="career-row-top">
+          <div class="career-row-icon">${icon}</div>
+          <div class="career-row-text">
+            <div class="career-row-title">${title}</div>
+            <div class="career-row-sub">${lifetime} lifetime</div>
+          </div>
+          <div class="career-level-badge maxed">MAX</div>
+        </div>
+      </div>`;
+  }
+  const claimable=entry.current>=entry.target;
+  const pct=Math.min(100,Math.round((entry.current/entry.target)*100));
+  return `
+    <div class="career-row${claimable?' claimable':''}">
+      <div class="career-row-top">
+        <div class="career-row-icon">${icon}</div>
+        <div class="career-row-text">
+          <div class="career-row-title">${title}</div>
+          <div class="career-row-sub">${lifetime} / ${entry.target.toLocaleString()} lifetime — 💎 ${entry.reward}</div>
+        </div>
+        <div class="career-level-badge">Lv.${entry.level+1}</div>
+      </div>
+      <div class="career-progress-track"><div class="career-progress-fill" style="width:${pct}%"></div></div>
+      <button class="career-claim-btn${claimable?' ready':''}" data-career="${track}" ${claimable?'':'disabled'}>
+        ${claimable?'Claim':'In progress'}
+      </button>
+    </div>`;
+}
+
 function renderMissionsModal(){
-  const dailyList=$('missionsDailyList'),weeklyList=$('missionsWeeklyList'),lockedNote=$('missionsLockedNote');
+  const dailyList=$('missionsDailyList'),weeklyList=$('missionsWeeklyList'),lockedNote=$('missionsLockedNote'),careerList=$('careerList');
   if(!dailyList)return;
 
   if(!latestMissions){
     dailyList.innerHTML='<div class="mission-row-sub">Play a hand to get started.</div>';
     weeklyList.innerHTML='';
     lockedNote?.classList.add('hidden');
-    return;
-  }
-  const m=latestMissions;
-  lockedNote?.classList.toggle('hidden',!!m.blackjackUnlocked);
-
-  if(!m.blackjackUnlocked){
-    dailyList.innerHTML='';weeklyList.innerHTML='';
   } else {
-    dailyList.innerHTML=
-      missionRowHTML('playHands','🃏','Play 5 hands',m.playHands,'coins')+
-      missionRowHTML('winHands','🏆','Win 3 hands',m.winHands,'coins')+
-      missionRowHTML('wagerTotal','💰','Wager '+fmt(m.wagerTotal.target),m.wagerTotal,'gems');
-    weeklyList.innerHTML=missionRowHTML('weekly','📅','Play 3 different tables',
-      {...m.weekly,current:m.weekly.current||0},'coins');
+    const m=latestMissions;
+    lockedNote?.classList.toggle('hidden',!!m.blackjackUnlocked);
+    if(!m.blackjackUnlocked){
+      dailyList.innerHTML='';weeklyList.innerHTML='';
+    } else {
+      dailyList.innerHTML=
+        missionRowHTML('playHands','🃏','Play 5 hands',m.playHands,'coins')+
+        missionRowHTML('winHands','🏆','Win 3 hands',m.winHands,'coins')+
+        missionRowHTML('wagerTotal','💰','Wager '+fmt(m.wagerTotal.target),m.wagerTotal,'gems');
+      weeklyList.innerHTML=missionRowHTML('weekly','📅','Play 3 different tables',
+        {...m.weekly,current:m.weekly.current||0},'coins');
+    }
   }
   // gem-funded table unlocks used to render here too — moved inline onto
   // each locked table's own lobby card (see renderLobby()/gemUnlockBtn).
+
+  // Career — permanent, ungated by blackjackUnlocked (unlike everything
+  // above), so it renders independent of the daily-unlock check entirely.
+  if(careerList){
+    careerList.innerHTML=!latestCareer
+      ? '<div class="mission-row-sub">Play a hand to get started.</div>'
+      : careerRowHTML('handsPlayed','🃏','Hands Played',latestCareer.handsPlayed)+
+        careerRowHTML('blackjacks','♠️','Blackjacks Hit',latestCareer.blackjacks);
+  }
 }
 
 async function claimMissionFlow(missionKey){
@@ -1020,6 +1073,29 @@ async function claimMissionFlow(missionKey){
   }
 }
 
+async function claimCareerFlow(track){
+  try{
+    const result=await CloudSync.claimCareerMission(track);
+    if(!result.ok){
+      if(result.incomplete||result.maxed)renderMissionsModal(); // stale local view — resync, no toast needed
+      return;
+    }
+    gems=result.gems; // career rewards are always gems — no bankroll-merge concern here, unlike claimMissionFlow's coin path
+    // Optimistically advance this track's level locally — same reasoning
+    // as claimMissionFlow's optimistic patch: the next snapshot confirms
+    // it anyway, but without this the row kept showing the OLD level/
+    // target/Claim-ready state until that snapshot landed.
+    if(latestCareer && latestCareer[track]){
+      latestCareer={...latestCareer,[track]:{...latestCareer[track],level:result.level,target:result.nextTarget,maxed:!!result.maxed}};
+    }
+    updateGemsUI();
+    showToast('+'+result.granted+' gems! Level '+result.level+(result.maxed?' — maxed out!':''));
+    renderMissionsModal();updateMissionsBadge();
+  }catch(err){
+    console.error('claimCareerMission failed',err);
+  }
+}
+
 async function unlockTableFlow(tableId){
   try{
     const result=await CloudSync.unlockTableWithGems(tableId);
@@ -1057,6 +1133,8 @@ $('missionsCloseBtn')?.addEventListener('click',()=>$('missionsModal').classList
 $('missionsScroll')?.addEventListener('click',(e)=>{
   const claimBtn=e.target.closest('[data-mission]');
   if(claimBtn&&!claimBtn.disabled){claimMissionFlow(claimBtn.dataset.mission);return;}
+  const careerBtn=e.target.closest('[data-career]');
+  if(careerBtn&&!careerBtn.disabled){claimCareerFlow(careerBtn.dataset.career);return;}
 });
 $('lobbyGemsAdd')?.addEventListener('click',()=>showToast('Earn gems from daily missions'));
 

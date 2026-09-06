@@ -961,6 +961,51 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   box-shadow:0 3px 12px rgba(212,175,55,.4);
 }
 .mission-claim-btn:disabled{cursor:default;}
+
+/* CAREER ROWS — deliberately a different visual language from .mission-row
+   above (violet/amethyst instead of gold, a diamond-cut border instead of
+   a plain rounded rect, a level badge instead of a claimed/unclaimed
+   state) so these read as "permanent account progress," not just another
+   daily challenge with a longer bar. */
+.career-section-label{color:rgba(196,164,255,.6);}
+.career-section-sub{
+  font-weight:600;letter-spacing:0;text-transform:none;color:rgba(196,164,255,.4);
+}
+.career-row{
+  position:relative;
+  background:linear-gradient(160deg,rgba(138,99,255,.1),rgba(255,255,255,.04));
+  border:1.5px solid rgba(168,130,255,.3);
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+  border-radius:0;padding:10px 12px;text-align:left;
+}
+.career-row.claimable{border-color:rgba(196,164,255,.75);background:linear-gradient(160deg,rgba(168,130,255,.22),rgba(255,255,255,.04));}
+.career-row.maxed{opacity:.7;}
+.career-row-top{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.career-row-icon{font-size:20px;flex:none;}
+.career-row-text{flex:1;min-width:0;}
+.career-row-title{color:#f4ecd8;font-weight:700;font-size:14px;}
+.career-row-sub{color:rgba(244,236,216,.6);font-size:11px;margin-top:1px;}
+.career-level-badge{
+  flex:none;font-size:11px;font-weight:800;letter-spacing:.5px;
+  padding:3px 9px;border-radius:20px;color:#e4d6ff;
+  background:rgba(168,130,255,.25);border:1px solid rgba(196,164,255,.5);
+}
+.career-level-badge.maxed{background:rgba(255,215,107,.2);border-color:rgba(255,215,107,.5);color:#ffe07a;}
+.career-progress-track{
+  height:6px;border-radius:3px;background:rgba(0,0,0,.35);overflow:hidden;margin-bottom:8px;
+}
+.career-progress-fill{height:100%;background:linear-gradient(90deg,#c4a4ff,#8a63ff);border-radius:3px;transition:width .3s;}
+.career-claim-btn{
+  width:100%;padding:8px;border-radius:10px;border:none;cursor:pointer;
+  font-weight:800;font-size:13px;transition:transform .08s;
+  background:rgba(255,255,255,.08);color:rgba(244,236,216,.4);
+}
+.career-claim-btn:active{transform:scale(.96);}
+.career-claim-btn.ready{
+  background:linear-gradient(175deg,#c4a4ff,#8a63ff);color:#1a1105;
+  box-shadow:0 3px 12px rgba(138,99,255,.4);
+}
+.career-claim-btn:disabled{cursor:default;}
 .ooc-hint{
   color:rgba(255,179,71,.85);font-size:12px;font-weight:600;
   margin:-4px 0 10px;font-variant-numeric:tabular-nums;

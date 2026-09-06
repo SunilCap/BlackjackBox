@@ -169,7 +169,7 @@
          visually covered by this bar, not just dim. Making it brighter
          never could have fixed that; it needed to actually be inside the
          visible bar. -->
-    <div class="version-badge" id="versionBadge">v1.9.10</div>
+    <div class="version-badge" id="versionBadge">v1.9.11</div>
   </div>
 
   <!-- RULES MODAL -->
@@ -657,6 +657,12 @@
 
       <div class="mission-section-label">Weekly</div>
       <div class="missions-list" id="missionsWeeklyList"><!-- mission-row x1, filled by game.js --></div>
+
+      <!-- Career — permanent, never resets. Deliberately its own visual
+           language (see .career-row/.career-section-label in style.css)
+           so it doesn't read as "another daily challenge." -->
+      <div class="mission-section-label career-section-label">Career <span class="career-section-sub">permanent</span></div>
+      <div class="missions-list career-list" id="careerList"><!-- career-row x2, filled by game.js --></div>
     </div>
 
     <button class="db-skip-btn" id="missionsCloseBtn">Close</button>
