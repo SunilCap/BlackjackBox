@@ -169,7 +169,7 @@
          visually covered by this bar, not just dim. Making it brighter
          never could have fixed that; it needed to actually be inside the
          visible bar. -->
-    <div class="version-badge" id="versionBadge">v1.9.7</div>
+    <div class="version-badge" id="versionBadge">v1.9.8</div>
   </div>
 
   <!-- RULES MODAL -->
@@ -289,6 +289,14 @@
       <div class="result-band">
         <div class="result-label" id="resultLabel"></div>
         <div class="result-word" id="resultWord"></div>
+        <!-- Fades in a beat after resultWord's own reveal (see .result-unlock-note's
+             transition-delay), so it visibly stacks AFTER the win/lose animation
+             rather than competing with it. Two explicit lines so it can never run
+             past the band's width, however wide the surrounding text gets. -->
+        <div class="result-unlock-note hidden" id="resultUnlockNote">
+          <div>🎯 Daily missions unlocked!</div>
+          <div>Progress starts now.</div>
+        </div>
       </div>
     </div>
 

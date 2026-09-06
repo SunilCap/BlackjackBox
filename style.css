@@ -667,6 +667,16 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .result-overlay.bust .result-word{color:#ff5c4a;}
 .result-overlay.push .result-word{color:#d0d8d4;}
 .result-overlay.ins  .result-word{color:#6be0ff;}
+.result-unlock-note{
+  margin-top:8px;font-size:13px;font-weight:700;line-height:1.4;text-align:center;
+  color:#ffe07a;opacity:0;transform:translateY(6px);max-width:78%;
+  transition:opacity .3s .3s,transform .3s .3s; /* .3s delay — starts AFTER
+    resultWord's own scale-in (which finishes around .28s+.08s delay), so
+    this visibly stacks in behind/after the win-lose reveal instead of
+    competing with it for attention */
+}
+.result-unlock-note.show{opacity:1;transform:translateY(0);}
+.result-unlock-note.hidden{display:none;}
 .result-band{position:relative;z-index:1;}
 #particleCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;}
 

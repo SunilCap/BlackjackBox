@@ -297,15 +297,13 @@ window.addEventListener('cloudsync-ready',()=>{
     latestMissions=cloudState.missions||null;
     tableUnlocks=cloudState.tableUnlocks||{};
     if(!wasMissionsUnlocked && latestMissions?.blackjackUnlocked){
-      // Don't show the toast yet if a round's hand-result animations are
-      // still playing (state stays off "betting" for the full sequence,
-      // see endCleanup()'s 2400ms setTimeout) — the snapshot that flips
-      // blackjackUnlocked almost always lands mid-animation, right after
-      // the unlocking hand. Queue it; the betting-state check below and
-      // the one at the bottom of that setTimeout both drain the flag.
+      // Queued, not shown immediately — this snapshot lands mid-round (the
+      // player just played the unlocking blackjack), so the message rides
+      // along inside THIS round's own result strip instead of floating as
+      // a standalone toast. See endCleanup()'s pendingMissionsUnlockToast
+      // check, which is the single place that actually reveals it.
       pendingMissionsUnlockToast=true;
     }
-    maybeFireMissionsUnlockToast();
     updateGemsUI();
     updateMissionsBadge();
     if($('missionsModal')?.classList.contains('show'))renderMissionsModal(); // live-refresh if it's open when a snapshot lands
@@ -1327,6 +1325,8 @@ $('rulesClose').addEventListener('click',()=>$('rulesModal').classList.remove('s
 function clearMsg(){
   $('resultOverlay').classList.remove('show');
   clearDealerHighlight();
+  const note=$('resultUnlockNote');
+  if(note){note.classList.remove('show');note.classList.add('hidden');} // reset so it doesn't carry over/re-flash into a later round's strip
   setTimeout(()=>{particles=[];if(pRaf){cancelAnimationFrame(pRaf);pRaf=null;}pCtx.clearRect(0,0,390,844);},300);
 }
 
@@ -1339,18 +1339,18 @@ function showToast(msg){
   toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1400);
 }
 
-// Fires only once the table is actually idle (state==="betting") — i.e. not
-// mid-deal and not mid hand-result-reveal — so it never gets stomped by or
-// stomps a round's own win/lose/blackjack toast, and never appears buried
-// under the result overlay animation. See the two call sites: right when
-// the snapshot arrives (covers the player being idle in the lobby) and at
-// the tail of endCleanup()'s setTimeout (covers the player mid-round).
+// Fires the unlock note inline inside the current round's result strip
+// (see endCleanup(), the single shared exit for every round-ending path).
+// Tying it to the strip that's already on screen — instead of a standalone
+// toast — means it can never land while the player's navigated away to the
+// lobby (the strip only exists mid-round) and never collides with/gets
+// clobbered by another toast firing at the same moment.
 let pendingMissionsUnlockToast=false;
-function maybeFireMissionsUnlockToast(){
-  if(pendingMissionsUnlockToast && state==='betting'){
-    pendingMissionsUnlockToast=false;
-    showToast('🎯 Daily missions unlocked! Progress starts now.');
-  }
+function showMissionsUnlockInline(){
+  const note=$('resultUnlockNote');
+  if(!note)return;
+  note.classList.remove('hidden');
+  requestAnimationFrame(()=>note.classList.add('show'));
 }
 
 if(DEBUG_MODE){
@@ -2262,7 +2262,11 @@ function endCleanup(){
     isBlackjack: stats.bj > roundStartBJCount,
     tableId: activeTable?.id,
   });
-  setTimeout(()=>{state="betting";resetTable();checkOutOfCoins();maybeFireMissionsUnlockToast();},2400);
+  if(pendingMissionsUnlockToast){
+    pendingMissionsUnlockToast=false;
+    showMissionsUnlockInline(); // this round's result strip is already showing at this point in every call path — see comment above showMissionsUnlockInline()
+  }
+  setTimeout(()=>{state="betting";resetTable();checkOutOfCoins();},2400);
 }
 
 /* ══════════════════════════════════════════
