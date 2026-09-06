@@ -169,7 +169,7 @@
          visually covered by this bar, not just dim. Making it brighter
          never could have fixed that; it needed to actually be inside the
          visible bar. -->
-    <div class="version-badge" id="versionBadge">v1.9.6</div>
+    <div class="version-badge" id="versionBadge">v1.9.7</div>
   </div>
 
   <!-- RULES MODAL -->
@@ -357,9 +357,6 @@
     </div>
   </div>
 
-  <!-- TOAST -->
-  <div class="toast" id="toast"></div>
-
   <!-- BET BAR — chip tray only, hand selector removed -->
   <div class="bet-bar" id="betBar">
     <div class="bet-row">
@@ -385,6 +382,17 @@
     <button class="bgo" id="hitBtn">Hit</button>
   </div>
 </div><!-- /game -->
+
+<!-- TOAST — lives outside both #lobby and #game (not nested in either) so
+     it stays visible regardless of which screen is active; both screens
+     use opacity:0 + pointer-events:none when hidden, which silently ate
+     any toast fired while the OTHER screen was showing (e.g. a "missions
+     unlocked" toast landing while back at the lobby). Positioned the same
+     as before — #app is the nearest positioned ancestor either way, so
+     the coordinates are unchanged; only the z-index needed raising above
+     the modals (highest currently in use is 230) so it can also surface
+     over an open modal, not just over the lobby/game screens themselves. -->
+<div class="toast" id="toast"></div>
 
 <!-- ══ STATS OVERLAY ══ -->
 <div class="fs-overlay" id="statsOverlay">

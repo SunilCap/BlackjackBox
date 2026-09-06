@@ -715,7 +715,11 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   position:absolute;bottom:230px;left:50%;transform:translateX(-50%) translateY(8px);
   background:rgba(20,20,20,.95);color:#fff;font-size:18px;font-weight:600;
   padding:12px 28px;border-radius:24px;border:1px solid rgba(255,255,255,.2);
-  white-space:nowrap;opacity:0;pointer-events:none;z-index:50;
+  white-space:nowrap;opacity:0;pointer-events:none;z-index:300; /* was 50 — that
+    only had to beat other children of #game when .toast lived inside it.
+    Now a direct child of #app (see index.html), it needs to clear the
+    lobby (100) AND every modal (highest in use is 230) so it can surface
+    no matter which screen or overlay is on top. */
   transition:opacity .18s,transform .18s;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
