@@ -973,7 +973,7 @@ function careerRowHTML(track,icon,title,entry){
           <div class="career-row-icon">${icon}</div>
           <div class="career-row-text">
             <div class="career-row-title">${title}</div>
-            <div class="career-row-sub">${lifetime} lifetime</div>
+            <div class="career-row-sub">${lifetime}</div>
           </div>
           <div class="career-level-badge maxed">MAX</div>
         </div>
@@ -987,7 +987,7 @@ function careerRowHTML(track,icon,title,entry){
         <div class="career-row-icon">${icon}</div>
         <div class="career-row-text">
           <div class="career-row-title">${title}</div>
-          <div class="career-row-sub">${lifetime} / ${entry.target.toLocaleString()} lifetime — 💎 ${entry.reward}</div>
+          <div class="career-row-sub">${lifetime} / ${entry.target.toLocaleString()} — 💎 ${entry.reward}</div>
         </div>
         <div class="career-level-badge">Lv.${entry.level+1}</div>
       </div>
