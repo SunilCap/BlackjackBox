@@ -569,6 +569,7 @@ function renderLobby(){
   const cityImg=CITY_IMG[tbl.id];
   $('tableCard').innerHTML=`
     <div class="banner-slot">
+      ${tbl.id==='monaco'?'<div class="dynamic-stakes-badge">⚡ Dynamic Stakes</div>':''}
       ${cityImg
         ?`<img class="city-banner-img" src="${cityImg}" alt="${tbl.name}">`
         :`<div class="city-icon ${tbl.cls}" style="color:${neonColor(tbl.cls)}">${tbl.svg}</div>
@@ -644,10 +645,18 @@ function neonColor(cls){
 function applyVipScaling(tbl){
   if(tbl.id!=='monaco')return;
   const round100=n=>Math.max(100,Math.round(n/100)*100);
-  const c1=round100(bankroll*0.001), c2=round100(bankroll*0.005), c3=round100(bankroll*0.02), c4=round100(bankroll*0.10);
+  // 1% / 2.5% / 5% / 15% — matches the ~1-2% (minBet-to-minStack) ratio the
+  // other tables already use (Paris/Singapore ~1%, Melbourne ~2%); the
+  // earlier 0.1%/0.5%/2%/10% pass undershot that by 10x, which read as a
+  // suspiciously small min bet at the table's own $100k entry point.
+  const c1=round100(bankroll*0.01), c2=round100(bankroll*0.025), c3=round100(bankroll*0.05), c4=round100(bankroll*0.15);
   tbl.minBet=c1;tbl.maxBet=c4;
   tbl._vipChips=[c1,c2,c3,c4];
-  tbl.info=`Minimum Stack $100,000\nBet ${fmt(c1)} – ${fmt(c4)}\n8 Decks`;
+  // Deliberately no mention of bankroll/scaling mechanics here — just that
+  // it moves. The badge on the lobby card (see renderLobby()) and the
+  // one-time entry toast (see enterGame()) cover the "why," this is just
+  // the plain stat line matching every other table's info block.
+  tbl.info=`Minimum Stack $100,000\nStakes change often\n8 Decks`;
 }
 
 function getTableChips(t){
@@ -1189,6 +1198,12 @@ setInterval(updateBailoutUI,1000); // cheap (one timestamp comparison + text upd
 
 function enterGame(tbl){
   applyVipScaling(tbl); // must run before tableStrip is set below, and before getTableChips() — see applyVipScaling()
+  if(tbl.id==='monaco' && !localStorage.getItem('vipStakesToastShown')){
+    // Once ever (not daily, unlike the missions-unlock note) — just enough
+    // to explain the badge the first time it's seen, never nags again.
+    try{localStorage.setItem('vipStakesToastShown','1');}catch(e){}
+    showToast('⚡ Stakes here change often');
+  }
   activeTable=tbl;
   currentTableIdx=TABLES.indexOf(tbl); // keep the lobby carousel pointing at whichever table we actually entered — otherwise returning to the lobby (e.g. from OOC) can show a DIFFERENT table's lock status than the one the player cares about
   $('rulesModal').classList.remove('show');
