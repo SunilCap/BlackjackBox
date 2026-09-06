@@ -987,8 +987,23 @@ async function claimMissionFlow(missionKey){
       if(result.incomplete)renderMissionsModal(); // stale local view — resync from what we've got, no toast needed
       return;
     }
-    if(result.currency==='gems'){gems=result.gems;}
-    else{bankroll=result.bankroll;updateUI();$('lobbyBal').textContent=fmt(bankroll);}
+    if(result.currency==='gems'){
+      gems=result.gems;
+    }else{
+      // Apply the reward as a DELTA to the live local bankroll — same
+      // pattern as every other grant flow (claimZeroBailout, claimFreeChip,
+      // purchases). This used to be `bankroll=result.bankroll` (a blind
+      // overwrite), which broke in two ways: (1) the server's returned
+      // bankroll only reflects hands already flushed to Firestore — up to
+      // 4 recent hands can still be sitting in the local sync batch — so
+      // overwriting with it silently erased those hands' wins/losses right
+      // at the moment of claiming, and (2) cloudCoinsMerged never got
+      // updated to match, so the next real snapshot saw the reward as a
+      // fresh jump and added it a second time.
+      bankroll+=result.granted;
+      cloudCoinsMerged=result.bankroll;
+      updateUI();$('lobbyBal').textContent=fmt(bankroll);
+    }
     // Optimistically flip this mission to claimed locally. The next
     // Firestore snapshot will confirm/overwrite this anyway, but that can
     // lag by a beat — without this, a successful claim still showed a live
