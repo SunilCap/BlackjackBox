@@ -293,8 +293,12 @@ window.addEventListener('cloudsync-ready',()=>{
     // missions + gems: plain read-through, same trust model as bailout/free-chip
     // above — server is authoritative, this is just a local mirror for UI.
     gems=cloudState.gems||0;
+    const wasMissionsUnlocked=!!latestMissions?.blackjackUnlocked;
     latestMissions=cloudState.missions||null;
     tableUnlocks=cloudState.tableUnlocks||{};
+    if(!wasMissionsUnlocked && latestMissions?.blackjackUnlocked){
+      showToast('🎯 Daily missions unlocked! Progress starts now.');
+    }
     updateGemsUI();
     updateMissionsBadge();
     if($('missionsModal')?.classList.contains('show'))renderMissionsModal(); // live-refresh if it's open when a snapshot lands
@@ -548,7 +552,15 @@ function renderLobby(){
   const bg=$('lobbyBg');
   bg.className='lobby-bg '+tbl.id;
 
-  const locked=bankroll<tbl.minStack;
+  const now=Date.now();
+  const unlockExpiresAt=tableUnlocks[tbl.id]||0;
+  const gemUnlockActive=unlockExpiresAt>now;
+  // gem unlock waives the entry MINIMUM only (not per-hand bet minimums,
+  // not real coin balance) — so a table under its minStack still counts
+  // as playable while a gem unlock is active.
+  const locked=bankroll<tbl.minStack && !gemUnlockActive;
+  const gemCost=TABLE_UNLOCK_COST_GEMS[tbl.id]; // undefined for tables with no entry minimum (e.g. Vegas) — nothing to unlock there
+  const showGemUnlock=locked && gemCost!=null;
 
   // chip values for this table
   const chips=getTableChips(tbl);
@@ -564,13 +576,18 @@ function renderLobby(){
     </div>
     <div class="table-info">
       ${tbl.info.split('\n').map(l=>`<p>${l}</p>`).join('')}
-      <p class="info-locked${locked?'':' hidden-slot'}">⚠ Need ${fmt(tbl.minStack)} to enter</p>
+      <p class="info-locked${locked?'':(gemUnlockActive?' unlock-active':' hidden-slot')}">
+        ${locked?('⚠ Need '+fmt(tbl.minStack)+' to enter'):(gemUnlockActive?('🔓 Gem-unlocked — '+fmtCountdown(unlockExpiresAt-now)+' left'):'')}
+      </p>
     </div>
     <button class="play-btn${locked?' locked':''}" id="playBtn">${locked?t('locked'):t('play')}</button>
     <button class="watch-ad-btn${locked?'':' hidden-slot'}" id="watchAdBtn">🎬 Watch Ad for ${fmt(500)}</button>
+    <button class="gem-unlock-btn${showGemUnlock?'':' hidden-slot'}" id="gemUnlockBtn" ${gemCost!=null&&gems<gemCost?'disabled':''}>🔓 Unlock 1hr — ${gemCost}💎</button>
   `;
   const wab=$('watchAdBtn');
   if(wab)wab.addEventListener('click',()=>{ if(locked)showRewardedAd('locked_table'); });
+  const gub=$('gemUnlockBtn');
+  if(gub)gub.addEventListener('click',()=>{ if(showGemUnlock)unlockTableFlow(tbl.id); });
 
   // dots
   const dotsEl=$('dots');
@@ -905,12 +922,12 @@ function missionRowHTML(key,icon,title,mission,currencyLabel){
 }
 
 function renderMissionsModal(){
-  const dailyList=$('missionsDailyList'),weeklyList=$('missionsWeeklyList'),unlockList=$('tableUnlockList'),lockedNote=$('missionsLockedNote');
+  const dailyList=$('missionsDailyList'),weeklyList=$('missionsWeeklyList'),lockedNote=$('missionsLockedNote');
   if(!dailyList)return;
 
   if(!latestMissions){
     dailyList.innerHTML='<div class="mission-row-sub">Play a hand to get started.</div>';
-    weeklyList.innerHTML='';unlockList.innerHTML='';
+    weeklyList.innerHTML='';
     lockedNote?.classList.add('hidden');
     return;
   }
@@ -927,24 +944,8 @@ function renderMissionsModal(){
     weeklyList.innerHTML=missionRowHTML('weekly','📅','Play 3 different tables',
       {...m.weekly,current:m.weekly.current||0},'coins');
   }
-
-  // gem-funded table unlocks — every table with a listed cost except Vegas
-  // (no entry minimum there, nothing to unlock)
-  const now=Date.now();
-  unlockList.innerHTML=Object.entries(TABLE_UNLOCK_COST_GEMS).map(([id,cost])=>{
-    const expiresAt=tableUnlocks[id]||0;
-    const active=expiresAt>now;
-    return `
-      <div class="table-unlock-row">
-        <div style="flex:1;min-width:0;">
-          <div class="table-unlock-name">${tableNameById(id)}</div>
-          <div class="table-unlock-sub">${active?('Unlocked — '+fmtCountdown(expiresAt-now)+' left'):(cost+' gems / hr')}</div>
-        </div>
-        <button class="table-unlock-btn${active?' active':''}" data-unlock="${id}" ${gems<cost?'disabled':''}>
-          ${active?'+1hr':'Unlock'}
-        </button>
-      </div>`;
-  }).join('');
+  // gem-funded table unlocks used to render here too — moved inline onto
+  // each locked table's own lobby card (see renderLobby()/gemUnlockBtn).
 }
 
 async function claimMissionFlow(missionKey){
@@ -974,6 +975,7 @@ async function unlockTableFlow(tableId){
     gems=result.gems;
     tableUnlocks={...tableUnlocks,[tableId]:result.expiresAt};
     updateGemsUI();renderMissionsModal();
+    if(TABLES[currentTableIdx]?.id===tableId)renderLobby(); // refresh the inline unlock pill/countdown if this table is on screen
     showToast(tableNameById(tableId)+' unlocked for 1hr!');
   }catch(err){
     console.error('unlockTableWithGems failed',err);
@@ -985,9 +987,8 @@ $('missionsCloseBtn')?.addEventListener('click',()=>$('missionsModal').classList
 $('missionsScroll')?.addEventListener('click',(e)=>{
   const claimBtn=e.target.closest('[data-mission]');
   if(claimBtn&&!claimBtn.disabled){claimMissionFlow(claimBtn.dataset.mission);return;}
-  const unlockBtn=e.target.closest('[data-unlock]');
-  if(unlockBtn&&!unlockBtn.disabled){unlockTableFlow(unlockBtn.dataset.unlock);}
 });
+$('lobbyGemsAdd')?.addEventListener('click',()=>showToast('Earn gems from daily missions'));
 
 /** Drives BOTH the persistent lobby banner and the claim popup's button/hint — single source of truth, called every tick and whenever bailoutLockoutUntil changes. */
 function updateBailoutUI(){

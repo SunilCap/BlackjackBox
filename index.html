@@ -109,8 +109,12 @@
     <div class="lobby-balance">
       <div class="lobby-coin"></div>
       <div class="lobby-bal" id="lobbyBal">$1,000</div>
-      <div class="lobby-gems" id="lobbyGems" title="Gems">💎 <span id="lobbyGemsAmt">0</span></div>
       <button class="lobby-add" id="lobbyAdd">+</button>
+    </div>
+    <div class="lobby-gems-balance" id="lobbyGems">
+      <div class="lobby-gem-icon">💎</div>
+      <div class="lobby-gems-amt" id="lobbyGemsAmt">0</div>
+      <button class="lobby-gems-add" id="lobbyGemsAdd" title="Earn gems from daily missions">+</button>
     </div>
     <button class="missions-btn" id="missionsBtn" title="Missions">
       🎯<span class="reward-badge hidden" id="missionsBadge"></span>
@@ -165,7 +169,7 @@
          visually covered by this bar, not just dim. Making it brighter
          never could have fixed that; it needed to actually be inside the
          visible bar. -->
-    <div class="version-badge" id="versionBadge">v1.9.4</div>
+    <div class="version-badge" id="versionBadge">v1.9.5</div>
   </div>
 
   <!-- RULES MODAL -->
@@ -612,10 +616,12 @@
 </div>
 
 <!-- MISSIONS — daily set gated behind "get your first blackjack of the
-     day", plus one weekly mission and gem-funded table unlocks. All
-     progress/claim state comes from the server (see missions block on the
-     user doc) — this markup is just a template that renderMissionsModal()
-     in game.js fills in, never a source of truth itself. -->
+     day", plus one weekly mission. Gem-funded table unlocks live inline on
+     the locked table's lobby card now (see renderLobby() in game.js), not
+     here. All progress/claim state comes from the server (see missions
+     block on the user doc) — this markup is just a template that
+     renderMissionsModal() in game.js fills in, never a source of truth
+     itself. -->
 <div id="missionsModal">
   <div class="db-inner missions-inner">
     <div class="db-icon">🎯</div>
@@ -632,9 +638,6 @@
 
       <div class="mission-section-label">Weekly</div>
       <div class="missions-list" id="missionsWeeklyList"><!-- mission-row x1, filled by game.js --></div>
-
-      <div class="mission-section-label">Table Unlocks <span class="mission-section-sub">1hr, no entry minimum</span></div>
-      <div class="missions-list" id="tableUnlockList"><!-- table-unlock-row x N, filled by game.js --></div>
     </div>
 
     <button class="db-skip-btn" id="missionsCloseBtn">Close</button>
