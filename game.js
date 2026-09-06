@@ -293,17 +293,8 @@ window.addEventListener('cloudsync-ready',()=>{
     // missions + gems: plain read-through, same trust model as bailout/free-chip
     // above — server is authoritative, this is just a local mirror for UI.
     gems=cloudState.gems||0;
-    const wasMissionsUnlocked=!!latestMissions?.blackjackUnlocked;
     latestMissions=cloudState.missions||null;
     tableUnlocks=cloudState.tableUnlocks||{};
-    if(!wasMissionsUnlocked && latestMissions?.blackjackUnlocked){
-      // Queued, not shown immediately — this snapshot lands mid-round (the
-      // player just played the unlocking blackjack), so the message rides
-      // along inside THIS round's own result strip instead of floating as
-      // a standalone toast. See endCleanup()'s pendingMissionsUnlockToast
-      // check, which is the single place that actually reveals it.
-      pendingMissionsUnlockToast=true;
-    }
     updateGemsUI();
     updateMissionsBadge();
     if($('missionsModal')?.classList.contains('show'))renderMissionsModal(); // live-refresh if it's open when a snapshot lands
@@ -1341,11 +1332,24 @@ function showToast(msg){
 
 // Fires the unlock note inline inside the current round's result strip
 // (see endCleanup(), the single shared exit for every round-ending path).
-// Tying it to the strip that's already on screen — instead of a standalone
-// toast — means it can never land while the player's navigated away to the
-// lobby (the strip only exists mid-round) and never collides with/gets
-// clobbered by another toast firing at the same moment.
-let pendingMissionsUnlockToast=false;
+// Deliberately NOT gated on server confirmation: the server round-trip for
+// this hand can lag behind endCleanup() by a full sync batch (up to 5
+// hands — see HANDS_PER_SYNC_BATCH in cloud-sync.js), so waiting on
+// blackjackUnlocked from a snapshot meant this reliably showed up during
+// the NEXT round's strip instead of the round that actually earned it.
+// isBJThisRound is the same client-computed signal already sent to the
+// server as isBlackjack, so this is just judging off the same fact sooner.
+// Purely cosmetic/informational — no reward is granted here — so an
+// optimistic client-only call is fine even though it isn't
+// server-authoritative, unlike every actual mission/economy value.
+const MISSIONS_UNLOCK_SHOWN_KEY='missionsUnlockShownDay';
+function todayUTCStr(){return new Date().toISOString().slice(0,10);}
+function hasShownMissionsUnlockToday(){
+  return localStorage.getItem(MISSIONS_UNLOCK_SHOWN_KEY)===todayUTCStr();
+}
+function markMissionsUnlockShownToday(){
+  try{localStorage.setItem(MISSIONS_UNLOCK_SHOWN_KEY,todayUTCStr());}catch(e){}
+}
 function showMissionsUnlockInline(){
   const note=$('resultUnlockNote');
   if(!note)return;
@@ -2258,13 +2262,14 @@ function endCleanup(){
   // net change for this exact round, whichever path got us here (normal
   // resolution, split reveal, or single-hand surrender all call endCleanup()
   // as their one shared exit) — batched and sent to the server every 5 rounds.
+  const isBJThisRound=stats.bj>roundStartBJCount;
   window.CloudSync?.recordHandForSync?.(bankroll-roundStartBankroll, computeRoundWagered(), {
-    isBlackjack: stats.bj > roundStartBJCount,
+    isBlackjack: isBJThisRound,
     tableId: activeTable?.id,
   });
-  if(pendingMissionsUnlockToast){
-    pendingMissionsUnlockToast=false;
-    showMissionsUnlockInline(); // this round's result strip is already showing at this point in every call path — see comment above showMissionsUnlockInline()
+  if(isBJThisRound && !hasShownMissionsUnlockToday()){
+    markMissionsUnlockShownToday();
+    showMissionsUnlockInline(); // this round's result strip is already showing at this point in every call path
   }
   setTimeout(()=>{state="betting";resetTable();checkOutOfCoins();},2400);
 }
