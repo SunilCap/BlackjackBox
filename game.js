@@ -917,9 +917,9 @@ function updateGemsUI(){
 
 function updateMissionsBadge(){
   const badge=$('missionsBadge');
-  if(!badge||!latestMissions)return;
+  if(!badge)return;
   const m=latestMissions;
-  const anyClaimable = m.blackjackUnlocked && (
+  const anyClaimable = !!m?.blackjackUnlocked && (
     (m.playHands&&!m.playHands.claimed&&m.playHands.current>=m.playHands.target) ||
     (m.winHands&&!m.winHands.claimed&&m.winHands.current>=m.winHands.target) ||
     (m.wagerTotal&&!m.wagerTotal.claimed&&m.wagerTotal.current>=m.wagerTotal.target) ||
@@ -927,6 +927,21 @@ function updateMissionsBadge(){
   );
   badge.classList.toggle('hidden',!anyClaimable);
   $('missionsBtn')?.classList.toggle('has-claimable',!!anyClaimable);
+
+  // In-round Missions button (game topbar) — swaps in for Stats as soon as
+  // today's challenge goes live (first blackjack of the day), and swaps
+  // back to Stats only once every daily+weekly mission for this cycle has
+  // been CLAIMED (not just completed — reaching target but not claiming
+  // yet should still read as "in progress"). Stats is simply unreachable
+  // from the game screen while a challenge is active; it's still reachable
+  // from the lobby's own stats button either way.
+  const allClaimed = !!m && !!m.playHands?.claimed && !!m.winHands?.claimed &&
+    !!m.wagerTotal?.claimed && !!m.weekly?.claimed;
+  const challengeActive = !!m?.blackjackUnlocked && !allClaimed;
+  $('statsToggle')?.classList.toggle('hidden',challengeActive);
+  $('gameMissionsBtn')?.classList.toggle('hidden',!challengeActive);
+  $('gameMissionsBtn')?.classList.toggle('has-claimable',!!anyClaimable);
+  $('gameMissionsBadge')?.classList.toggle('hidden',!anyClaimable);
 }
 
 function missionRowHTML(key,icon,title,mission,currencyLabel){
@@ -985,6 +1000,14 @@ async function claimMissionFlow(missionKey){
     }
     if(result.currency==='gems'){gems=result.gems;}
     else{bankroll=result.bankroll;updateUI();$('lobbyBal').textContent=fmt(bankroll);}
+    // Optimistically flip this mission to claimed locally. The next
+    // Firestore snapshot will confirm/overwrite this anyway, but that can
+    // lag by a beat — without this, a successful claim still showed a live
+    // "Claim" button and a lit missions badge until the snapshot caught up,
+    // which read as the reward not having registered.
+    if(latestMissions && latestMissions[missionKey]){
+      latestMissions={...latestMissions,[missionKey]:{...latestMissions[missionKey],claimed:true}};
+    }
     updateGemsUI();
     showToast(result.currency==='gems'?('+'+result.granted+' gems!'):('+'+fmt(result.granted)+'!'));
     renderMissionsModal();updateMissionsBadge();
@@ -1010,7 +1033,22 @@ async function unlockTableFlow(tableId){
   }
 }
 
-$('missionsBtn')?.addEventListener('click',()=>{renderMissionsModal();$('missionsModal').classList.add('show');});
+$('missionsBtn')?.addEventListener('click',()=>{
+  // Force out any hands sitting in the current (not-yet-5) sync batch —
+  // otherwise progress here can lag up to 4 hands behind what was actually
+  // played, since the server only advances mission counters as batches
+  // land (see HANDS_PER_SYNC_BATCH in cloud-sync.js). The live snapshot
+  // listener picks up the result a moment later and re-renders this modal
+  // automatically (see the `if($('missionsModal')...renderMissionsModal()`
+  // line in updateCloudState) — this just makes sure that flush actually
+  // goes out the moment the player looks.
+  window.CloudSync?.flushPendingHandSync?.();
+  renderMissionsModal();$('missionsModal').classList.add('show');
+});
+$('gameMissionsBtn')?.addEventListener('click',()=>{
+  window.CloudSync?.flushPendingHandSync?.();
+  renderMissionsModal();$('missionsModal').classList.add('show');
+});
 $('missionsCloseBtn')?.addEventListener('click',()=>$('missionsModal').classList.remove('show'));
 $('missionsScroll')?.addEventListener('click',(e)=>{
   const claimBtn=e.target.closest('[data-mission]');

@@ -411,6 +411,18 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   font-size:22px;cursor:pointer;flex:none;
 }
 .icon-btn:active{background:rgba(0,0,0,.65);}
+/* in-round Missions button — takes the Stats button's slot in the game
+   topbar whenever a challenge is in progress (see updateGameMissionsBtn()
+   in game.js). Same 48px slot/circle as .icon-btn; Stats itself becomes
+   unreachable mid-round in that state (still reachable from the lobby). */
+.missions-btn-ingame{
+  position:relative;font-size:20px;
+  background:rgba(212,175,55,.14);border-color:rgba(212,175,55,.5);
+}
+.missions-btn-ingame.has-claimable{
+  background:#ffd76b;border-color:#ffd76b;
+  box-shadow:0 0 0 3px rgba(255,215,107,.25);
+}
 
 /* ── image-based icon buttons (sprite assets) ── */
 .lb-btn.has-img,.icon-btn.has-img,.fs-back.has-img,.add-btn.has-img{
