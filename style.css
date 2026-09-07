@@ -581,22 +581,23 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .fs-body{flex:1;overflow-y:auto;padding:20px 16px 90px;}
 
 /* ── STATS OVERLAY ── */
-#statsOverlay{background:linear-gradient(160deg,#050e0a 0%,#081a10 100%);}
-.stats-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+#statsOverlay{background:linear-gradient(160deg,#080510 0%,#12082a 100%);} /* was its own green — now matches Store's purple, per "one color throughout the game" */
+.stats-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
 .stats-card{
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
-  border-radius:12px;padding:14px 16px;
+  background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.09); /* border width/opacity now matches .iap-card exactly */
+  border-radius:14px;padding:16px 14px; /* matches .iap-card */
   display:flex;align-items:center;justify-content:space-between;
 }
 .stats-card .sc-label{color:rgba(255,255,255,.55);font-size:17px;}
 .stats-card .sc-val{font-weight:800;font-size:28px;color:#fff;}
-.stats-card .sc-val.g{color:#6fc977;}.stats-card .sc-val.r{color:#ff7b6b;}.stats-card .sc-val.gold{color:#d4af37;}
-.stats-divider{color:#d4af37;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;margin:10px 0 6px;padding-bottom:5px;border-bottom:1px solid rgba(212,175,55,.2);}
+.stats-card .sc-val.g{color:#6fc977;}.stats-card .sc-val.r{color:#ff7b6b;}.stats-card .sc-val.gold{color:#d4af37;} /* win/loss stay semantically green/red — not decorative, so not swept into the gold-accent unification */
+.stats-divider{color:rgba(255,255,255,.5);font-size:16px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;margin:22px 0 12px;padding-bottom:0;border-bottom:none;} /* now matches .store-section-title exactly, including dropping the old gold underline — the gold accent is reserved for actionable/reward elements, a section label isn't one */
+.stats-divider:first-child{margin-top:0;}
 .stats-reset-btn{
   width:100%;padding:13px;border-radius:10px;border:none;
   background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);
   font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;
-}
+} /* deliberately NOT gold — gold is reserved for positive claim/buy actions, and Reset is a destructive one */
 
 /* ── STORE OVERLAY ── */
 #storeOverlay{background:linear-gradient(160deg,#080510 0%,#12082a 100%);}
@@ -900,14 +901,14 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
    .db-claim-btn/.db-skip-btn from the daily bonus modal above for a
    consistent look, just two new overlays + two new button styles.
 ══════════════════════════════════════════ */
-#outOfCoinsModal,#switchTableModal,#lobbyClaimModal,#rewardsModal,#vipInviteModal{
+#outOfCoinsModal,#switchTableModal,#lobbyClaimModal,#vipInviteModal{
   position:absolute;inset:0;z-index:220;
   background:rgba(0,0,0,.82);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;
   transition:opacity .3s;
 }
-#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show,#rewardsModal.show,#vipInviteModal.show{opacity:1;pointer-events:all;}
+#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show,#vipInviteModal.show{opacity:1;pointer-events:all;}
 .ooc-desc{color:rgba(244,236,216,.75);font-size:14px;line-height:1.5;margin-bottom:20px;}
 .ooc-secondary-btn{
   width:100%;padding:13px;border-radius:14px;
@@ -918,24 +919,28 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .ooc-secondary-btn:active{transform:scale(.96);}
 
 /* ══════════════════════════════════════════
-   REWARDS HUB — a small menu, not a claim flow of its own. Each row just
-   opens the existing, already-built modal (dailyBonusModal /
-   lobbyClaimModal) — this avoids duplicating any claim logic.
+   REWARDS HUB — now a full-screen page (reuses .fs-overlay/.fs-topbar/
+   .fs-back/.fs-body from Stats), themed to match Store/Missions/Stats/
+   Language: same purple gradient, same .iap-card-scale rows. Still just a
+   menu, not a claim flow of its own — each row opens the existing,
+   already-built modal (dailyBonusModal/lobbyClaimModal) rather than
+   duplicating any claim logic.
 ══════════════════════════════════════════ */
-.rewards-list{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+#rewardsModal{background:linear-gradient(160deg,#080510 0%,#12082a 100%);}
+.rewards-list{display:flex;flex-direction:column;gap:10px;}
 .reward-row{
   display:flex;align-items:center;gap:12px;width:100%;
-  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);
-  border-radius:14px;padding:12px 14px;cursor:pointer;text-align:left;
+  background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.09); /* matches .iap-card/.mission-row exactly */
+  border-radius:14px;padding:16px 14px;cursor:pointer;text-align:left;
   transition:transform .08s,background .15s;
 }
 .reward-row:active{transform:scale(.98);background:rgba(255,255,255,.1);}
 .reward-row.hidden{display:none;}
-.reward-row-icon{font-size:26px;flex:none;}
+.reward-row-icon{font-size:28px;flex:none;width:38px;text-align:center;}
 .reward-row-text{flex:1;min-width:0;}
-.reward-row-title{color:#f4ecd8;font-weight:700;font-size:15px;}
-.reward-row-sub{color:rgba(244,236,216,.6);font-size:12px;margin-top:2px;}
-.reward-row-chevron{flex:none;color:rgba(244,236,216,.4);font-size:18px;}
+.reward-row-title{color:#fff;font-weight:700;font-size:18px;} /* matches .iap-name */
+.reward-row-sub{color:rgba(255,255,255,.65);font-size:15px;margin-top:2px;line-height:1.4;} /* matches .iap-desc */
+.reward-row-chevron{flex:none;color:rgba(255,255,255,.35);font-size:20px;}
 .ooc-secondary-btn:disabled{opacity:.4;cursor:default;}
 .ooc-tertiary-btn{
   width:100%;padding:13px;border-radius:14px;border:none;
@@ -1073,7 +1078,7 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 /* rules modal */
 #rulesModal{
   position:absolute;inset:0;z-index:200;
-  background:rgba(0,0,0,.85);
+  background:linear-gradient(160deg,#080510 0%,#12082a 100%); /* was flat rgba(0,0,0,.85) — now the same purple gradient as Store's overlay behind the inset card */
   display:flex;flex-direction:column;
   opacity:0;pointer-events:none;
   transition:opacity .3s;
@@ -1082,7 +1087,7 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .rules-inner{
   flex:1;overflow-y:auto;
   margin:60px 20px 20px;
-  background:rgba(4,20,12,.97);
+  background:rgba(10,4,20,.97); /* was a dark green tint — now dark purple, matching the overlay behind it instead of clashing with it */
   border:1.5px solid rgba(255,255,255,.14);
   border-radius:18px;
   padding:24px 20px 80px;
@@ -1097,10 +1102,9 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .rule-section{margin-bottom:22px;}
 .rule-section h3{
-  color:#6fc977;font-size:17px;font-weight:800;
-  letter-spacing:.8px;text-transform:uppercase;
-  margin-bottom:10px;padding-bottom:5px;
-  border-bottom:1px solid rgba(111,201,119,.25);
+  color:rgba(255,255,255,.5);font-size:16px;font-weight:800; /* was green (#6fc977) — matches .store-section-title's neutral gray-white now instead of a decorative color */
+  letter-spacing:1.2px;text-transform:uppercase;
+  margin-bottom:10px;padding-bottom:0;border-bottom:none; /* dropped the green underline to match .store-section-title, which has none */
 }
 .rule-section p,.rule-section li{
   color:rgba(255,255,255,.85);font-size:17px;line-height:1.75;
@@ -1108,7 +1112,7 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 .rule-section ul{padding-left:18px;}
 .rule-section li{margin-bottom:6px;}
 .rule-highlight{
-  background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.25);
+  background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.25); /* already gold — unchanged, this was already the right "emphasis" language */
   border-radius:10px;padding:14px 16px;margin-top:8px;
 }
 .rule-highlight p{color:#f4ecd8;font-size:17px;line-height:1.8;}
@@ -1122,7 +1126,7 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 
 /* ── LANGUAGE OVERLAY ── */
-#langOverlay{background:linear-gradient(160deg,#05080e 0%,#0a1020 100%);}
+#langOverlay{background:linear-gradient(160deg,#080510 0%,#12082a 100%);} /* was its own blue — now matches Store's purple */
 .lang-grid{
   display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
   padding:4px 0 20px;

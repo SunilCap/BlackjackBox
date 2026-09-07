@@ -169,7 +169,7 @@
          visually covered by this bar, not just dim. Making it brighter
          never could have fixed that; it needed to actually be inside the
          visible bar. -->
-    <div class="version-badge" id="versionBadge">v1.9.19</div>
+    <div class="version-badge" id="versionBadge">v1.9.21</div>
   </div>
 
   <!-- RULES MODAL -->
@@ -624,10 +624,12 @@
 
 <!-- REWARDS HUB — a small menu; each row opens the existing dailyBonusModal
      / lobbyClaimModal below rather than duplicating their claim logic -->
-<div id="rewardsModal">
-  <div class="db-inner">
-    <div class="db-icon">🎁</div>
-    <h2 class="db-title">Rewards</h2>
+<div class="fs-overlay" id="rewardsModal">
+  <div class="fs-topbar">
+    <button class="fs-back has-img" id="rewardsBack"><img src="img/icon-back.png" alt="Back"></button>
+    <div class="fs-title">Rewards</div>
+  </div>
+  <div class="fs-body">
     <div class="rewards-list">
       <button class="reward-row" id="rewardsDailyRow">
         <div class="reward-row-icon">🎁</div>
@@ -656,7 +658,6 @@
         <div class="reward-row-chevron">›</div>
       </button>
     </div>
-    <button class="db-skip-btn" id="rewardsCloseBtn">Close</button>
   </div>
 </div>
 

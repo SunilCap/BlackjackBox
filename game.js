@@ -452,7 +452,7 @@ $('dbClaimBtn')?.addEventListener('click',claimDailyBonusFlow);
 $('dbSkipBtn')?.addEventListener('click',()=>$('dailyBonusModal').classList.remove('show'));
 $('dailyBonusBanner')?.addEventListener('click',showDailyBonusModal);
 $('rewardsBtn')?.addEventListener('click',()=>{updateRewardsBadge();$('rewardsModal').classList.add('show');});
-$('rewardsCloseBtn')?.addEventListener('click',()=>$('rewardsModal').classList.remove('show'));
+$('rewardsBack')?.addEventListener('click',()=>$('rewardsModal').classList.remove('show'));
 $('rewardsDailyRow')?.addEventListener('click',()=>{$('rewardsModal').classList.remove('show');showDailyBonusModal();});
 $('rewardsOocRow')?.addEventListener('click',()=>{$('rewardsModal').classList.remove('show');showLobbyClaimModal();});
 $('rewardsFreeChipRow')?.addEventListener('click',()=>{
