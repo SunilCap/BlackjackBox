@@ -1255,7 +1255,7 @@ $('gameMissionsBtn')?.addEventListener('click',()=>{
   window.CloudSync?.flushPendingHandSync?.();
   renderMissionsModal();$('missionsModal').classList.add('show');
 });
-$('missionsCloseBtn')?.addEventListener('click',()=>$('missionsModal').classList.remove('show'));
+$('missionsBack')?.addEventListener('click',()=>$('missionsModal').classList.remove('show'));
 $('missionsScroll')?.addEventListener('click',(e)=>{
   const claimBtn=e.target.closest('[data-mission]');
   if(claimBtn&&!claimBtn.disabled){claimMissionFlow(claimBtn.dataset.mission);return;}
