@@ -743,6 +743,31 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
+/* VIP unlock full-screen takeover — z-index 400, above .toast (300) and
+   every modal (highest in use is 220), since this is meant to be the most
+   prominent thing on screen when it fires. */
+.vip-unlock-overlay{
+  position:absolute;inset:0;z-index:400;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 40%,rgba(50,25,70,.94),rgba(4,2,8,.97));
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.vip-unlock-overlay.show{opacity:1;pointer-events:all;}
+#vipConfettiCanvas{position:absolute;inset:0;width:100%;height:100%;}
+.vip-unlock-content{
+  position:relative;text-align:center;
+  transform:scale(.7);opacity:0;
+  transition:transform .4s cubic-bezier(.18,.9,.3,1.3),opacity .3s; /* same pop curve as .result-word, for a consistent "big reveal" feel across the app */
+}
+.vip-unlock-overlay.show .vip-unlock-content{transform:scale(1);opacity:1;}
+.vip-unlock-crown{font-size:64px;filter:drop-shadow(0 0 20px rgba(255,215,107,.8));margin-bottom:8px;}
+.vip-unlock-title{
+  font-size:32px;font-weight:900;line-height:1.15;letter-spacing:1px;
+  background:linear-gradient(135deg,#ffe07a,#ffb347,#ffe07a);-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 30px rgba(255,179,71,.35);
+}
+.vip-unlock-sub{margin-top:14px;font-size:14px;color:rgba(255,255,255,.6);font-weight:600;}
+
 /* action bar */
 .actionbar{display:flex;gap:7px;padding:10px 10px 28px;background:linear-gradient(to bottom,#3b1f12,#1e0e07);border-top:3px solid #140904;flex:none;}
 .actionbar button{flex:1;padding:18px 2px;border-radius:12px;border:none;font-weight:800;font-size:17px;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.4);transition:transform .07s,opacity .2s;letter-spacing:.3px;}
@@ -875,14 +900,14 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
    .db-claim-btn/.db-skip-btn from the daily bonus modal above for a
    consistent look, just two new overlays + two new button styles.
 ══════════════════════════════════════════ */
-#outOfCoinsModal,#switchTableModal,#lobbyClaimModal,#rewardsModal,#missionsModal{
+#outOfCoinsModal,#switchTableModal,#lobbyClaimModal,#rewardsModal,#missionsModal,#vipInviteModal{
   position:absolute;inset:0;z-index:220;
   background:rgba(0,0,0,.82);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;
   transition:opacity .3s;
 }
-#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show,#rewardsModal.show,#missionsModal.show{opacity:1;pointer-events:all;}
+#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show,#rewardsModal.show,#missionsModal.show,#vipInviteModal.show{opacity:1;pointer-events:all;}
 .ooc-desc{color:rgba(244,236,216,.75);font-size:14px;line-height:1.5;margin-bottom:20px;}
 .ooc-secondary-btn{
   width:100%;padding:13px;border-radius:14px;

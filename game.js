@@ -244,6 +244,29 @@ const DEBUG_MODE=true;
 let bankroll=(_cachedState&&typeof _cachedState.bankroll==='number')?_cachedState.bankroll:1000,startBR=1000,shoe=[],state="betting";
 let cloudRemoveAds=_cachedState?.removeAds||false,cloudVipUntil=_cachedState?.vipUntil||0,cloudCoinsMerged=0;
 let cloudUnlockedTables=_cachedState?.unlockedTables||[]; // permanent table unlocks from a purchase (e.g. vip_bundle → 'monaco') — separate from bankroll gating and the hourly gem unlock
+
+/* VIP LOUNGE UNLOCK CELEBRATION — fires once per SESSION (in-memory flag,
+   not localStorage — resets on reload, unlike the daily-note/dynamic-
+   stakes-toast patterns) the first time bankroll crosses $100,000 from
+   below. Baseline seeds from `bankroll`'s already-cache-initialized value
+   at load, so a returning player who's already past $100k never triggers
+   this — only a genuine climb across the line during this session does. */
+let vipUnlockBaseline=bankroll,vipUnlockHandledThisSession=false;
+let pendingVipPopup=false;      // crossing happened mid-round — ask, once the round settles (see endCleanup())
+let pendingVipUnlockAnim=false; // player said "Not Now"/closed the ask — takeover deferred to the next back-to-lobby event
+function checkVipUnlockCrossing(){
+  if(vipUnlockHandledThisSession)return;
+  if(bankroll>=100000 && vipUnlockBaseline<100000){
+    vipUnlockHandledThisSession=true;
+    const onGameScreen=$('lobby').classList.contains('hide');
+    if(onGameScreen){
+      pendingVipPopup=true; // consumed at the tail of endCleanup()'s settle timeout — never mid hand-result-animation
+    } else {
+      playVipUnlockTakeover(); // already at the lobby — nothing to wait for, no popup needed, play it now
+    }
+  }
+  vipUnlockBaseline=bankroll;
+}
 let roundStartBankroll=0; // bankroll snapshot taken at the top of startRound() — endCleanup() diffs against this
 let roundStartBJCount=0; // stats.bj snapshot taken at the top of startRound() — endCleanup() diffs against this to tell CloudSync whether THIS round included a natural blackjack, for the mission "first blackjack of the day" gate
 let gems=0, latestMissions=null, latestCareer=null, tableUnlocks={}; // server-authoritative mirrors, same pattern as bankroll/bailoutLockoutUntil/nextFreeChipAt — refreshed from every cloud snapshot and every claim/unlock response
@@ -771,12 +794,75 @@ function showSwitchTableModal(alt){
   lobbyBtn.addEventListener('click',onLobby);
 }
 
+function showVipInvitePopup(){
+  $('vipInviteModal').classList.add('show');
+  const yesBtn=$('viYesBtn'),noBtn=$('viNoBtn');
+  const onYes=()=>{
+    $('vipInviteModal').classList.remove('show');cleanup();
+    const vipTable=TABLES.find(t=>t.id==='monaco');
+    if(vipTable)enterGame(vipTable);
+  };
+  const onNo=()=>{
+    $('vipInviteModal').classList.remove('show');cleanup();
+    pendingVipUnlockAnim=true; // deferred to the next actual back-to-lobby event, not fired here — see backBtn/backToLobbyFromModal()
+  };
+  function cleanup(){ yesBtn.removeEventListener('click',onYes); noBtn.removeEventListener('click',onNo); }
+  yesBtn.addEventListener('click',onYes);
+  noBtn.addEventListener('click',onNo);
+}
+
+// Full-screen celebratory takeover — deliberately its own small confetti
+// implementation on its own canvas rather than reusing spawnParticles()/
+// #particleCanvas, which live scoped inside #resultOverlay (inside #game)
+// and would be invisible from the lobby — same trap the toast fix dealt
+// with earlier. Tap anywhere to dismiss.
+let vipConfettiParticles=[],vipConfettiRaf=null;
+function playVipUnlockTakeover(){
+  const overlay=$('vipUnlockOverlay');
+  if(!overlay)return;
+  overlay.classList.add('show');
+  const canvas=$('vipConfettiCanvas'),ctx=canvas.getContext('2d');
+  canvas.width=390;canvas.height=844;
+  const colors=['#ffd76b','#ffb347','#ff8a5c','#c4a4ff','#8fd8ff'];
+  vipConfettiParticles=Array.from({length:70},()=>({
+    x:Math.random()*390,y:-20-Math.random()*300,
+    r:4+Math.random()*4,rot:Math.random()*360,
+    vy:2+Math.random()*3,vx:(Math.random()-0.5)*2,vr:(Math.random()-0.5)*8,
+    col:colors[Math.floor(Math.random()*colors.length)],
+    shape:Math.random()<0.5?'rect':'circle',
+  }));
+  if(vipConfettiRaf)cancelAnimationFrame(vipConfettiRaf);
+  (function animVipConfetti(){
+    ctx.clearRect(0,0,390,844);
+    let alive=false;
+    vipConfettiParticles.forEach(p=>{
+      p.y+=p.vy;p.x+=p.vx;p.rot+=p.vr;
+      if(p.y<884)alive=true;
+      ctx.save();ctx.fillStyle=p.col;
+      ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
+      if(p.shape==='rect')ctx.fillRect(-p.r/2,-p.r*1.5,p.r,p.r*3);
+      else{ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();}
+      ctx.restore();
+    });
+    vipConfettiRaf=alive?requestAnimationFrame(animVipConfetti):null;
+  })();
+}
+function dismissVipUnlockTakeover(){
+  $('vipUnlockOverlay')?.classList.remove('show');
+  if(vipConfettiRaf){cancelAnimationFrame(vipConfettiRaf);vipConfettiRaf=null;}
+  vipConfettiParticles=[];
+  const canvas=$('vipConfettiCanvas');
+  canvas?.getContext('2d')?.clearRect(0,0,390,844);
+}
+$('vipUnlockOverlay')?.addEventListener('click',dismissVipUnlockTakeover);
+
 function backToLobbyFromModal(){
   window.CloudSync?.flushPendingHandSync?.();
   $('game').classList.remove('show');
   $('lobby').classList.remove('hide');
   $('lobbyBal').textContent=fmt(bankroll);
   renderLobby();
+  if(pendingVipUnlockAnim){pendingVipUnlockAnim=false;playVipUnlockTakeover();}
 }
 
 let storeOpenedFromOOC=false; // tells the Store's back button whether to return to the OOC popup instead of the lobby
@@ -1222,6 +1308,7 @@ $('backBtn').addEventListener('click',()=>{
   $('lobby').classList.remove('hide');
   $('lobbyBal').textContent=fmt(bankroll);
   renderLobby();
+  if(pendingVipUnlockAnim){pendingVipUnlockAnim=false;playVipUnlockTakeover();}
   // natural break point — let the Ad Placement API decide whether/how often to actually show one
   // (unless the player bought Remove Ads or has active VIP — both include ad-free play)
   const adsRemoved=cloudRemoveAds||(cloudVipUntil>Date.now());
@@ -1892,6 +1979,7 @@ function dropOnCircle(idx,denom){
 /* ── updateUI ── */
 function updateUI(){
   $('balAmt').textContent=fmt(bankroll);
+  checkVipUnlockCrossing(); // cheap comparison, safe to run on every call — see its own comment for why this hook point covers ~every bankroll-changing flow
   const totalBet=circles.reduce((s,c)=>s+c.bet,0);
   const activeCnt=circles.filter(c=>c.bet>0).length;
   if(totalBet>0){
@@ -2405,7 +2493,10 @@ function endCleanup(){
     markMissionsUnlockShownToday();
     showMissionsUnlockInline(); // this round's result strip is already showing at this point in every call path
   }
-  setTimeout(()=>{state="betting";resetTable();checkOutOfCoins();},2400);
+  setTimeout(()=>{
+    state="betting";resetTable();checkOutOfCoins();
+    if(pendingVipPopup){pendingVipPopup=false;showVipInvitePopup();}
+  },2400);
 }
 
 /* ══════════════════════════════════════════

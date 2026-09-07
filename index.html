@@ -169,7 +169,7 @@
          visually covered by this bar, not just dim. Making it brighter
          never could have fixed that; it needed to actually be inside the
          visible bar. -->
-    <div class="version-badge" id="versionBadge">v1.9.15</div>
+    <div class="version-badge" id="versionBadge">v1.9.16</div>
   </div>
 
   <!-- RULES MODAL -->
@@ -402,6 +402,18 @@
      over an open modal, not just over the lobby/game screens themselves. -->
 <div class="toast" id="toast"></div>
 
+<!-- Full-screen VIP unlock celebration — same "must live outside #lobby/
+     #game" reasoning as #toast above, since it can fire from either
+     screen. Tap-anywhere-to-dismiss handled in game.js. -->
+<div class="vip-unlock-overlay" id="vipUnlockOverlay">
+  <canvas id="vipConfettiCanvas"></canvas>
+  <div class="vip-unlock-content">
+    <div class="vip-unlock-crown">👑</div>
+    <div class="vip-unlock-title">VIP LOUNGE<br>UNLOCKED</div>
+    <div class="vip-unlock-sub">Tap anywhere to continue</div>
+  </div>
+</div>
+
 <!-- ══ STATS OVERLAY ══ -->
 <div class="fs-overlay" id="statsOverlay">
   <div class="fs-topbar">
@@ -593,6 +605,20 @@
     <div class="ooc-desc" id="stDesc"></div>
     <button class="db-claim-btn" id="stSwitchBtn">Switch Table</button>
     <button class="db-skip-btn" id="stLobbyBtn">Back to Lobby instead</button>
+  </div>
+</div>
+
+<!-- Fires once per session, the first time bankroll crosses $100,000 —
+     see checkVipUnlockCrossing()/showVipInvitePopup() in game.js. Reuses
+     the same .db-inner/.db-claim-btn/.db-skip-btn shape as switchTableModal
+     above. -->
+<div id="vipInviteModal">
+  <div class="db-inner">
+    <div class="db-icon">👑</div>
+    <h2 class="db-title">You've Reached VIP Status!</h2>
+    <div class="ooc-desc">You just crossed $100,000. Want to check out the VIP Lounge?</div>
+    <button class="db-claim-btn" id="viYesBtn">Yes, Take Me There</button>
+    <button class="db-skip-btn" id="viNoBtn">Not Now</button>
   </div>
 </div>
 
