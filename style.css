@@ -900,14 +900,14 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
    .db-claim-btn/.db-skip-btn from the daily bonus modal above for a
    consistent look, just two new overlays + two new button styles.
 ══════════════════════════════════════════ */
-#outOfCoinsModal,#switchTableModal,#lobbyClaimModal,#rewardsModal,#missionsModal,#vipInviteModal{
+#outOfCoinsModal,#switchTableModal,#lobbyClaimModal,#rewardsModal,#vipInviteModal{
   position:absolute;inset:0;z-index:220;
   background:rgba(0,0,0,.82);
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;
   transition:opacity .3s;
 }
-#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show,#rewardsModal.show,#missionsModal.show,#vipInviteModal.show{opacity:1;pointer-events:all;}
+#outOfCoinsModal.show,#switchTableModal.show,#lobbyClaimModal.show,#rewardsModal.show,#vipInviteModal.show{opacity:1;pointer-events:all;}
 .ooc-desc{color:rgba(244,236,216,.75);font-size:14px;line-height:1.5;margin-bottom:20px;}
 .ooc-secondary-btn{
   width:100%;padding:13px;border-radius:14px;
@@ -948,48 +948,54 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
 
 /* ══════════════════════════════════════════
    MISSIONS — daily set (gated behind first-blackjack-of-day) + weekly +
-   gem-funded table unlocks. Reuses .db-inner/.db-icon/.db-title from the
-   daily bonus modal for a consistent frame; everything below that is new.
+   the permanent VIP Track. Full-screen layout, reusing .fs-overlay/
+   .fs-topbar/.fs-back/.fs-title/.fs-body from the Stats screen for a
+   consistent frame. Visual language (background, section labels, card
+   scale) deliberately matches the STORE screen — same purple gradient,
+   same .store-section-title/.iap-card proportions — so the gold claim
+   buttons read as the same call-to-action color as Store's gold "buy"
+   buttons, rather than inventing a fourth screen identity.
 ══════════════════════════════════════════ */
-.missions-inner{max-height:calc(100% - 40px);display:flex;flex-direction:column;}
-.missions-gem-line{color:#8fd8ff;font-weight:700;font-size:14px;margin-bottom:14px;}
+#missionsModal{background:linear-gradient(160deg,#080510 0%,#12082a 100%);}
+.missions-gem-line{color:#8fd8ff;font-weight:700;font-size:16px;margin-bottom:16px;}
 .missions-locked-note{
-  color:#ffe07a;font-size:13px;font-weight:600;text-align:center;
+  color:#ffe07a;font-size:15px;font-weight:600;text-align:center;
   background:rgba(255,224,122,.08);border:1px solid rgba(255,224,122,.25);
-  border-radius:12px;padding:10px 12px;margin-bottom:14px;
+  border-radius:12px;padding:12px 14px;margin-bottom:16px;
 }
 .missions-locked-note.hidden{display:none;}
-.missions-scroll{overflow-y:auto;flex:1;min-height:0;margin:0 -4px;padding:0 4px;}
+.missions-scroll{margin:0 -4px;padding:0 4px;} /* was overflow-y:auto;flex:1;min-height:0 — that was for the old nested scroll-within-a-fixed-height-popup; now .fs-body IS the one scroll container for the whole page, same as Stats */
 .mission-section-label{
-  color:rgba(244,236,216,.5);font-size:11px;font-weight:800;letter-spacing:1px;
-  text-transform:uppercase;text-align:left;margin:14px 0 8px;
+  color:rgba(255,255,255,.5);font-size:16px;font-weight:800;
+  letter-spacing:1.2px;text-transform:uppercase;text-align:left;
+  margin:22px 0 12px; /* matches .store-section-title exactly */
 }
 .mission-section-label:first-child{margin-top:0;}
 
-.missions-list{display:flex;flex-direction:column;gap:8px;}
+.missions-list{display:flex;flex-direction:column;gap:10px;}
 .mission-row{
-  background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);
-  border-radius:14px;padding:10px 12px;text-align:left;
+  background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.09); /* .iap-card's exact tone */
+  border-radius:14px;padding:16px 14px;text-align:left;
 }
-.mission-row.claimable{border-color:rgba(255,215,107,.6);background:rgba(255,215,107,.08);}
+.mission-row.claimable{border-color:rgba(255,215,107,.6);background:rgba(255,215,107,.07);}
 .mission-row.claimed{opacity:.5;}
-.mission-row-top{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
-.mission-row-icon{font-size:20px;flex:none;}
+.mission-row-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.mission-row-icon{font-size:28px;flex:none;width:38px;text-align:center;} /* scaled toward .iap-icon (34px/50px slot) while staying a bit more compact since this row also carries a progress bar + button below, unlike a plain iap-card */
 .mission-row-text{flex:1;min-width:0;}
-.mission-row-title{color:#f4ecd8;font-weight:700;font-size:14px;}
-.mission-row-sub{color:rgba(244,236,216,.6);font-size:11px;margin-top:1px;}
+.mission-row-title{color:#fff;font-weight:700;font-size:18px;} /* matches .iap-name */
+.mission-row-sub{color:rgba(255,255,255,.65);font-size:15px;margin-top:2px;line-height:1.4;} /* matches .iap-desc */
 .mission-progress-track{
-  height:6px;border-radius:3px;background:rgba(0,0,0,.35);overflow:hidden;margin-bottom:8px;
+  height:7px;border-radius:4px;background:rgba(0,0,0,.35);overflow:hidden;margin-bottom:10px;
 }
-.mission-progress-fill{height:100%;background:linear-gradient(90deg,#ffd76b,#d4af37);border-radius:3px;transition:width .3s;}
+.mission-progress-fill{height:100%;background:linear-gradient(90deg,#ffd76b,#d4af37);border-radius:4px;transition:width .3s;}
 .mission-claim-btn{
-  width:100%;padding:8px;border-radius:10px;border:none;cursor:pointer;
-  font-weight:800;font-size:13px;transition:transform .08s;
-  background:rgba(255,255,255,.08);color:rgba(244,236,216,.4);
+  width:100%;padding:12px;border-radius:22px;border:none;cursor:pointer; /* radius/padding matches .iap-buy */
+  font-weight:800;font-size:15px;transition:transform .08s;
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);
 }
 .mission-claim-btn:active{transform:scale(.96);}
 .mission-claim-btn.ready{
-  background:linear-gradient(175deg,#ffd76b,#d4af37);color:#1a1105;
+  background:linear-gradient(175deg,#ffe089,#c8a01a);color:#2a1e02; /* exact .iap-buy gradient — same gold "buy/claim" language as Store */
   box-shadow:0 3px 12px rgba(212,175,55,.4);
 }
 .mission-claim-btn:disabled{cursor:default;}
@@ -1008,29 +1014,29 @@ body{height:100vh;height:100dvh;background:#000;display:flex;justify-content:cen
   background:linear-gradient(160deg,rgba(138,99,255,.1),rgba(255,255,255,.04));
   border:1.5px solid rgba(168,130,255,.3);
   clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
-  border-radius:0;padding:10px 12px;text-align:left;
+  border-radius:0;padding:16px 14px;text-align:left; /* padding matches .mission-row/.iap-card scale */
 }
 .career-row.claimable{border-color:rgba(196,164,255,.75);background:linear-gradient(160deg,rgba(168,130,255,.22),rgba(255,255,255,.04));}
 .career-row.maxed{opacity:.7;}
-.career-row-top{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
-.career-row-icon{font-size:20px;flex:none;}
+.career-row-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.career-row-icon{font-size:28px;flex:none;width:38px;text-align:center;}
 .career-row-text{flex:1;min-width:0;}
-.career-row-title{color:#f4ecd8;font-weight:700;font-size:14px;}
-.career-row-sub{color:rgba(244,236,216,.6);font-size:11px;margin-top:1px;}
+.career-row-title{color:#fff;font-weight:700;font-size:18px;}
+.career-row-sub{color:rgba(255,255,255,.65);font-size:15px;margin-top:2px;line-height:1.4;}
 .career-level-badge{
-  flex:none;font-size:11px;font-weight:800;letter-spacing:.5px;
-  padding:3px 9px;border-radius:20px;color:#e4d6ff;
+  flex:none;font-size:13px;font-weight:800;letter-spacing:.5px;
+  padding:4px 11px;border-radius:20px;color:#e4d6ff;
   background:rgba(168,130,255,.25);border:1px solid rgba(196,164,255,.5);
 }
 .career-level-badge.maxed{background:rgba(255,215,107,.2);border-color:rgba(255,215,107,.5);color:#ffe07a;}
 .career-progress-track{
-  height:6px;border-radius:3px;background:rgba(0,0,0,.35);overflow:hidden;margin-bottom:8px;
+  height:7px;border-radius:4px;background:rgba(0,0,0,.35);overflow:hidden;margin-bottom:10px;
 }
-.career-progress-fill{height:100%;background:linear-gradient(90deg,#c4a4ff,#8a63ff);border-radius:3px;transition:width .3s;}
+.career-progress-fill{height:100%;background:linear-gradient(90deg,#c4a4ff,#8a63ff);border-radius:4px;transition:width .3s;}
 .career-claim-btn{
-  width:100%;padding:8px;border-radius:10px;border:none;cursor:pointer;
-  font-weight:800;font-size:13px;transition:transform .08s;
-  background:rgba(255,255,255,.08);color:rgba(244,236,216,.4);
+  width:100%;padding:12px;border-radius:22px;border:none;cursor:pointer;
+  font-weight:800;font-size:15px;transition:transform .08s;
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);
 }
 .career-claim-btn:active{transform:scale(.96);}
 .career-claim-btn.ready{
