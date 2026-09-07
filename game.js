@@ -820,6 +820,12 @@ let vipConfettiParticles=[],vipConfettiRaf=null;
 function playVipUnlockTakeover(){
   const overlay=$('vipUnlockOverlay');
   if(!overlay)return;
+  // Land on the VIP Lounge's own lobby card while it's still covered by
+  // the overlay, so the swap is invisible — by the time the player
+  // dismisses the takeover, VIP Lounge is already right there, instantly
+  // accessible, instead of whatever table happened to be showing before.
+  const vipIdx=TABLES.findIndex(t=>t.id==='monaco');
+  if(vipIdx!==-1){currentTableIdx=vipIdx;renderLobby();}
   overlay.classList.add('show');
   const canvas=$('vipConfettiCanvas'),ctx=canvas.getContext('2d');
   canvas.width=390;canvas.height=844;
