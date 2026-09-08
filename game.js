@@ -566,8 +566,8 @@ const CITY_IMG={
   vegas:'img/city-lasvegas.png',
   paris:'img/city-paris.png',
   singapore:'img/city-singapore.png',
-  melbourne:'img/city-melbourne.png'
-  // monaco: no matching sprite asset, keeps the original CSS-drawn skyline below
+  melbourne:'img/city-melbourne.png',
+  monaco:'img/city-viplounge.png',
 };
 
 function renderLobby(){
