@@ -18,6 +18,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
+import { getAnalytics, logEvent, isSupported as analyticsIsSupported } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-analytics.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAzXNwrzyLVcZK2DT6FKseZhOlmRIXIcXU",
@@ -26,12 +27,37 @@ const firebaseConfig = {
   storageBucket: "blackjack-box-21.firebasestorage.app",
   messagingSenderId: "990610106334",
   appId: "1:990610106334:web:a11eeb3d7693f6a870df4f",
+  // measurementId: "G-XXXXXXXXXX", // SETUP: enable Analytics on this project
+  // in the Firebase console (Project settings > Integrations > Google
+  // Analytics), then paste the measurementId it gives you here. Until this
+  // line is filled in, logAnalyticsEvent() below silently no-ops — every
+  // event call site in game.js is already wired and will start working
+  // the instant this is set, no other code changes needed.
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
+
+/**
+ * Firebase Analytics (GA4) — stays `null` until Analytics is enabled on
+ * the project AND firebaseConfig.measurementId (above) is filled in;
+ * isSupported() also covers environments where Analytics genuinely can't
+ * run (some in-app webviews, private browsing in some browsers). Every
+ * logAnalyticsEvent() call below silently no-ops while `analytics` is
+ * null, so nothing breaks and no event is ever lost queued — it just
+ * doesn't send until this is properly turned on.
+ */
+let analytics = null;
+analyticsIsSupported().then((supported) => {
+  if (supported && firebaseConfig.measurementId) analytics = getAnalytics(app);
+}).catch(() => { /* unsupported environment — logAnalyticsEvent() below just no-ops, never throws */ });
+
+function logAnalyticsEvent(name, params = {}) {
+  if (!analytics) return;
+  try { logEvent(analytics, name, params); } catch (e) { /* analytics must never break gameplay */ }
+}
 
 /**
  * Single-active-session enforcement: "you're logged in on another device."
@@ -577,6 +603,7 @@ window.CloudSync = {
   linkWithGoogle, linkWithEmail, isAccountLinked, getAccountLabel,
   recordHandForSync, flushPendingHandSync,
   claimMission, claimCareerMission, unlockTableWithGems,
+  logEvent: logAnalyticsEvent,
 };
 // game.js is a classic (non-module) script and runs BEFORE this module finishes loading,
 // so it can't just check `if (window.CloudSync)` at the top level — it listens for this

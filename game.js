@@ -254,6 +254,7 @@ let cloudUnlockedTables=_cachedState?.unlockedTables||[]; // permanent table unl
 let vipUnlockBaseline=bankroll,vipUnlockHandledThisSession=false;
 let pendingVipPopup=false;      // crossing happened mid-round — ask, once the round settles (see endCleanup())
 let pendingVipUnlockAnim=false; // player said "Not Now"/closed the ask — takeover deferred to the next back-to-lobby event
+let vipEntryVia='organic'; // set to 'invite' right before entering from the popup's Yes button, read once by enterGame()'s vip_lounge_entered event, then reset — see showVipInvitePopup()
 function checkVipUnlockCrossing(){
   if(vipUnlockHandledThisSession)return;
   if(bankroll>=100000 && vipUnlockBaseline<100000){
@@ -796,14 +797,17 @@ function showSwitchTableModal(alt){
 
 function showVipInvitePopup(){
   $('vipInviteModal').classList.add('show');
+  window.CloudSync?.logEvent?.('vip_invite_shown',{context:'mid_round'}); // the only trigger path that shows this popup at all — the lobby-idle crossing skips straight to the takeover, see triggerVipUnlockFlow()
   const yesBtn=$('viYesBtn'),noBtn=$('viNoBtn');
   const onYes=()=>{
     $('vipInviteModal').classList.remove('show');cleanup();
+    window.CloudSync?.logEvent?.('vip_invite_responded',{response:'yes'});
     const vipTable=TABLES.find(t=>t.id==='monaco');
-    if(vipTable)enterGame(vipTable);
+    if(vipTable){vipEntryVia='invite';enterGame(vipTable);}
   };
   const onNo=()=>{
     $('vipInviteModal').classList.remove('show');cleanup();
+    window.CloudSync?.logEvent?.('vip_invite_responded',{response:'not_now'});
     pendingVipUnlockAnim=true; // deferred to the next actual back-to-lobby event, not fired here — see backBtn/backToLobbyFromModal()
   };
   function cleanup(){ yesBtn.removeEventListener('click',onYes); noBtn.removeEventListener('click',onNo); }
@@ -817,9 +821,10 @@ function showVipInvitePopup(){
 // and would be invisible from the lobby — same trap the toast fix dealt
 // with earlier. Tap anywhere to dismiss.
 let vipConfettiParticles=[],vipConfettiRaf=null;
-function playVipUnlockTakeover(){
+function playVipUnlockTakeover(context='lobby'){
   const overlay=$('vipUnlockOverlay');
   if(!overlay)return;
+  window.CloudSync?.logEvent?.('vip_unlock_celebration_shown',{context});
   // Land on the VIP Lounge's own lobby card while it's still covered by
   // the overlay, so the swap is invisible — by the time the player
   // dismisses the takeover, VIP Lounge is already right there, instantly
@@ -868,7 +873,7 @@ function backToLobbyFromModal(){
   $('lobby').classList.remove('hide');
   $('lobbyBal').textContent=fmt(bankroll);
   renderLobby();
-  if(pendingVipUnlockAnim){pendingVipUnlockAnim=false;playVipUnlockTakeover();}
+  if(pendingVipUnlockAnim){pendingVipUnlockAnim=false;playVipUnlockTakeover('mid_round_deferred');}
 }
 
 let storeOpenedFromOOC=false; // tells the Store's back button whether to return to the OOC popup instead of the lobby
@@ -1194,6 +1199,7 @@ async function claimMissionFlow(missionKey){
     updateGemsUI();
     showToast(result.currency==='gems'?('+'+result.granted+' gems!'):('+'+fmt(result.granted)+'!'));
     renderMissionsModal();updateMissionsBadge();
+    window.CloudSync?.logEvent?.('mission_claimed',{mission_key:missionKey,reward_amount:result.granted,currency:result.currency});
   }catch(err){
     console.error('claimMission failed',err);
   }
@@ -1217,6 +1223,8 @@ async function claimCareerFlow(track){
     updateGemsUI();
     showToast('+'+result.granted+' gems! Level '+result.level+(result.maxed?' — maxed out!':''));
     renderMissionsModal();updateMissionsBadge();
+    window.CloudSync?.logEvent?.('career_level_claimed',{track,new_level:result.level,reward_amount:result.granted});
+    if(result.maxed)window.CloudSync?.logEvent?.('career_track_maxed',{track});
   }catch(err){
     console.error('claimCareerMission failed',err);
   }
@@ -1234,6 +1242,7 @@ async function unlockTableFlow(tableId){
     updateGemsUI();renderMissionsModal();
     if(TABLES[currentTableIdx]?.id===tableId)renderLobby(); // refresh the inline unlock pill/countdown if this table is on screen
     showToast(tableNameById(tableId)+' unlocked for 1hr!');
+    window.CloudSync?.logEvent?.('gem_table_unlock',{table_id:tableId,gem_cost:TABLE_UNLOCK_COST_GEMS[tableId]||0});
   }catch(err){
     console.error('unlockTableWithGems failed',err);
   }
@@ -1250,10 +1259,12 @@ $('missionsBtn')?.addEventListener('click',()=>{
   // goes out the moment the player looks.
   window.CloudSync?.flushPendingHandSync?.();
   renderMissionsModal();$('missionsModal').classList.add('show');
+  window.CloudSync?.logEvent?.('missions_screen_opened',{entry_point:'lobby_btn'});
 });
 $('gameMissionsBtn')?.addEventListener('click',()=>{
   window.CloudSync?.flushPendingHandSync?.();
   renderMissionsModal();$('missionsModal').classList.add('show');
+  window.CloudSync?.logEvent?.('missions_screen_opened',{entry_point:'game_btn'});
 });
 $('missionsBack')?.addEventListener('click',()=>$('missionsModal').classList.remove('show'));
 $('missionsScroll')?.addEventListener('click',(e)=>{
@@ -1290,6 +1301,10 @@ setInterval(updateBailoutUI,1000); // cheap (one timestamp comparison + text upd
 
 function enterGame(tbl){
   applyVipScaling(tbl); // must run before tableStrip is set below, and before getTableChips() — see applyVipScaling()
+  if(tbl.id==='monaco'){
+    window.CloudSync?.logEvent?.('vip_lounge_entered',{via:vipEntryVia});
+    vipEntryVia='organic'; // reset immediately after use — 'invite' only ever describes THIS entry, set right before calling enterGame() from the popup's Yes handler
+  }
   if(tbl.id==='monaco' && !localStorage.getItem('vipStakesToastShown')){
     // Once ever (not daily, unlike the missions-unlock note) — just enough
     // to explain the badge the first time it's seen, never nags again.
@@ -1314,7 +1329,7 @@ $('backBtn').addEventListener('click',()=>{
   $('lobby').classList.remove('hide');
   $('lobbyBal').textContent=fmt(bankroll);
   renderLobby();
-  if(pendingVipUnlockAnim){pendingVipUnlockAnim=false;playVipUnlockTakeover();}
+  if(pendingVipUnlockAnim){pendingVipUnlockAnim=false;playVipUnlockTakeover('mid_round_deferred');}
   // natural break point — let the Ad Placement API decide whether/how often to actually show one
   // (unless the player bought Remove Ads or has active VIP — both include ad-free play)
   const adsRemoved=cloudRemoveAds||(cloudVipUntil>Date.now());
@@ -1582,6 +1597,7 @@ function showMissionsUnlockInline(){
   if(!note)return;
   note.classList.remove('hidden');
   requestAnimationFrame(()=>note.classList.add('show'));
+  window.CloudSync?.logEvent?.('daily_missions_unlocked');
 }
 
 if(DEBUG_MODE){
