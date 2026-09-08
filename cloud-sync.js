@@ -27,12 +27,7 @@ const firebaseConfig = {
   storageBucket: "blackjack-box-21.firebasestorage.app",
   messagingSenderId: "990610106334",
   appId: "1:990610106334:web:a11eeb3d7693f6a870df4f",
-  // measurementId: "G-XXXXXXXXXX", // SETUP: enable Analytics on this project
-  // in the Firebase console (Project settings > Integrations > Google
-  // Analytics), then paste the measurementId it gives you here. Until this
-  // line is filled in, logAnalyticsEvent() below silently no-ops — every
-  // event call site in game.js is already wired and will start working
-  // the instant this is set, no other code changes needed.
+  measurementId: "G-FJ0BLM565T",
 };
 
 const app = initializeApp(firebaseConfig);
