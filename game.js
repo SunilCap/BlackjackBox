@@ -270,7 +270,7 @@ function checkVipUnlockCrossing(){
 }
 let roundStartBankroll=0; // bankroll snapshot taken at the top of startRound() — endCleanup() diffs against this
 let roundStartBJCount=0; // stats.bj snapshot taken at the top of startRound() — endCleanup() diffs against this to tell CloudSync whether THIS round included a natural blackjack, for the mission "first blackjack of the day" gate
-let gems=0, latestMissions=null, latestCareer=null, tableUnlocks={}; // server-authoritative mirrors, same pattern as bankroll/bailoutLockoutUntil/nextFreeChipAt — refreshed from every cloud snapshot and every claim/unlock response
+let gems=0, latestMissions=null, latestCareer=null, latestChallenges=null, tableUnlocks={}; // server-authoritative mirrors, same pattern as bankroll/bailoutLockoutUntil/nextFreeChipAt — refreshed from every cloud snapshot and every claim/unlock response
 
 const DAILY_BONUS_LADDER=[500,750,1000,1250,1500,1750,2000];
 let dailyBonusPopupShown=false;
@@ -321,6 +321,7 @@ window.addEventListener('cloudsync-ready',()=>{
     gems=cloudState.gems||0;
     latestMissions=cloudState.missions||null;
     latestCareer=cloudState.career||null;
+    latestChallenges=cloudState.challenges||null;
     tableUnlocks=cloudState.tableUnlocks||{};
     updateGemsUI();
     updateMissionsBadge();
@@ -1039,7 +1040,7 @@ function updateGemsUI(){
 function updateMissionsBadge(){
   const badge=$('missionsBadge');
   if(!badge)return;
-  const m=latestMissions,c=latestCareer;
+  const m=latestMissions,c=latestCareer,ch=latestChallenges;
   const anyClaimable = (!!m?.blackjackUnlocked && (
     (m.playHands&&!m.playHands.claimed&&m.playHands.current>=m.playHands.target) ||
     (m.winHands&&!m.winHands.claimed&&m.winHands.current>=m.winHands.target) ||
@@ -1048,7 +1049,12 @@ function updateMissionsBadge(){
   )) || (!!c && (
     (c.handsPlayed&&!c.handsPlayed.maxed&&c.handsPlayed.current>=c.handsPlayed.target) ||
     (c.blackjacks&&!c.blackjacks.maxed&&c.blackjacks.current>=c.blackjacks.target)
-  )); // career claimable also lights the badge — it's still "something to claim in the modal" — but deliberately NOT part of allClaimed below, since career never fully "completes" like the daily+weekly cycle does
+  )) || (!!ch && (
+    (ch.firstWin&&ch.firstWin.hasWon&&!ch.firstWin.claimed) ||
+    (ch.hotStreak&&!ch.hotStreak.maxed&&ch.hotStreak.current>=ch.hotStreak.target) ||
+    (ch.highRoller&&ch.highRoller.current>=ch.highRoller.target) ||
+    (ch.bigWinner&&ch.bigWinner.current>=ch.bigWinner.target)
+  )); // career/challenges claimable also light the badge — still "something to claim in the modal" — but deliberately NOT part of allClaimed below, since neither ever fully "completes" like the daily+weekly cycle does
   badge.classList.toggle('hidden',!anyClaimable);
   $('missionsBtn')?.classList.toggle('has-claimable',!!anyClaimable);
 
@@ -1129,8 +1135,64 @@ function careerRowHTML(track,icon,title,entry){
     </div>`;
 }
 
+// Challenges reuse the exact same .mission-row/.mission-progress-track/
+// .mission-claim-btn shell as Daily/Weekly (deliberately gold, per design
+// — these read as "one-off milestones to go earn", not a separate
+// permanent identity the way VIP Track's violet is). Three different
+// shapes share this one function: opts.oneTime (firstWin — binary claim,
+// no progress bar), a finite ladder that can hit opts.maxed (hotStreak),
+// and an infinite ladder with no maxed state (highRoller/bigWinner).
+const FIRST_WIN_REWARD_DISPLAY=10; // mirrors index.js's FIRST_WIN_REWARD — display-only, server re-validates on claim, same convention as TABLE_UNLOCK_COST_GEMS
+function challengeRowHTML(key,icon,title,desc,entry,opts={}){
+  if(opts.oneTime){
+    const claimable=entry.hasWon&&!entry.claimed;
+    return `
+      <div class="mission-row${claimable?' claimable':''}${entry.claimed?' claimed':''}">
+        <div class="mission-row-top">
+          <div class="mission-row-icon">${icon}</div>
+          <div class="mission-row-text">
+            <div class="mission-row-title">${title}</div>
+            <div class="mission-row-sub">${desc} — 💎 ${FIRST_WIN_REWARD_DISPLAY}</div>
+          </div>
+        </div>
+        <button class="mission-claim-btn${claimable?' ready':''}" data-challenge="${key}" ${entry.claimed?'disabled':''}>
+          ${entry.claimed?'Claimed':claimable?'Claim':'Not yet'}
+        </button>
+      </div>`;
+  }
+  if(entry.maxed){
+    return `
+      <div class="mission-row claimed">
+        <div class="mission-row-top">
+          <div class="mission-row-icon">${icon}</div>
+          <div class="mission-row-text">
+            <div class="mission-row-title">${title} — MAXED</div>
+            <div class="mission-row-sub">${desc}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+  const claimable=entry.current>=entry.target;
+  const pct=Math.min(100,Math.round((entry.current/entry.target)*100));
+  const progressText=key==='hotStreak'?(entry.current+'/'+entry.target):(fmt(entry.current)+' / '+fmt(entry.target));
+  return `
+    <div class="mission-row${claimable?' claimable':''}">
+      <div class="mission-row-top">
+        <div class="mission-row-icon">${icon}</div>
+        <div class="mission-row-text">
+          <div class="mission-row-title">${title}</div>
+          <div class="mission-row-sub">${desc} — ${progressText} — 💎 ${entry.reward}</div>
+        </div>
+      </div>
+      <div class="mission-progress-track"><div class="mission-progress-fill" style="width:${pct}%"></div></div>
+      <button class="mission-claim-btn${claimable?' ready':''}" data-challenge="${key}" ${claimable?'':'disabled'}>
+        ${claimable?'Claim':'In progress'}
+      </button>
+    </div>`;
+}
+
 function renderMissionsModal(){
-  const dailyList=$('missionsDailyList'),weeklyList=$('missionsWeeklyList'),lockedNote=$('missionsLockedNote'),careerList=$('careerList');
+  const dailyList=$('missionsDailyList'),weeklyList=$('missionsWeeklyList'),lockedNote=$('missionsLockedNote'),careerList=$('careerList'),challengesList=$('challengesList');
   if(!dailyList)return;
 
   if(!latestMissions){
@@ -1153,6 +1215,17 @@ function renderMissionsModal(){
   }
   // gem-funded table unlocks used to render here too — moved inline onto
   // each locked table's own lobby card (see renderLobby()/gemUnlockBtn).
+
+  // Challenges — permanent, ungated by blackjackUnlocked, renders
+  // independent of the daily-unlock check same as Career does.
+  if(challengesList){
+    challengesList.innerHTML=!latestChallenges
+      ? '<div class="mission-row-sub">Play a hand to get started.</div>'
+      : challengeRowHTML('firstWin','🏆','First Win','Win your first hand',latestChallenges.firstWin,{oneTime:true})+
+        challengeRowHTML('hotStreak','🔥','Hot Streak','Win hands consecutively',latestChallenges.hotStreak)+
+        challengeRowHTML('highRoller','💰','High Roller','Place a big bet',latestChallenges.highRoller)+
+        challengeRowHTML('bigWinner','👑','Big Winner','Win big from a single hand',latestChallenges.bigWinner);
+  }
 
   // Career — permanent, ungated by blackjackUnlocked (unlike everything
   // above), so it renders independent of the daily-unlock check entirely.
@@ -1230,6 +1303,28 @@ async function claimCareerFlow(track){
   }
 }
 
+async function claimChallengeFlow(track){
+  try{
+    const result=await CloudSync.claimChallengeMission(track);
+    if(!result.ok){
+      if(result.incomplete||result.maxed||result.alreadyClaimed)renderMissionsModal(); // stale local view — resync, no toast needed
+      return;
+    }
+    gems=result.gems; // challenge rewards are always gems, same as career — no bankroll-merge concern
+    // Server returns the ENTIRE fresh challenges object (unlike Career's
+    // per-field response) since hotStreak/highRoller/bigWinner's `current`
+    // is a live value the client shouldn't try to reconstruct itself —
+    // just take the server's word for it wholesale.
+    latestChallenges=result.challenges;
+    updateGemsUI();
+    showToast('+'+result.granted+' gems!'+(track==='firstWin'?'':' Next target unlocked.'));
+    renderMissionsModal();updateMissionsBadge();
+    window.CloudSync?.logEvent?.('challenge_claimed',{track,reward_amount:result.granted});
+  }catch(err){
+    console.error('claimChallengeMission failed',err);
+  }
+}
+
 async function unlockTableFlow(tableId){
   try{
     const result=await CloudSync.unlockTableWithGems(tableId);
@@ -1270,6 +1365,8 @@ $('missionsBack')?.addEventListener('click',()=>$('missionsModal').classList.rem
 $('missionsScroll')?.addEventListener('click',(e)=>{
   const claimBtn=e.target.closest('[data-mission]');
   if(claimBtn&&!claimBtn.disabled){claimMissionFlow(claimBtn.dataset.mission);return;}
+  const challengeBtn=e.target.closest('[data-challenge]');
+  if(challengeBtn&&!challengeBtn.disabled){claimChallengeFlow(challengeBtn.dataset.challenge);return;}
   const careerBtn=e.target.closest('[data-career]');
   if(careerBtn&&!careerBtn.disabled){claimCareerFlow(careerBtn.dataset.career);return;}
 });

@@ -169,7 +169,7 @@
          visually covered by this bar, not just dim. Making it brighter
          never could have fixed that; it needed to actually be inside the
          visible bar. -->
-    <div class="version-badge" id="versionBadge">v1.9.23</div>
+    <div class="version-badge" id="versionBadge">v1.9.24</div>
   </div>
 
   <!-- RULES MODAL -->
@@ -686,6 +686,14 @@
 
       <div class="mission-section-label">Weekly</div>
       <div class="missions-list" id="missionsWeeklyList"><!-- mission-row x1, filled by game.js --></div>
+
+      <!-- Challenges — permanent, ungated by blackjackUnlocked, same gold
+           .mission-row treatment as Daily/Weekly (these read as "one-off
+           milestones", not a separate permanent identity like VIP Track's
+           violet). firstWin is one-time; the other three are ladders that
+           keep re-arming at a harder threshold on claim. -->
+      <div class="mission-section-label">Challenges</div>
+      <div class="missions-list" id="challengesList"><!-- mission-row x4, filled by game.js --></div>
 
       <!-- Career — permanent, never resets. Deliberately its own visual
            language (see .career-row/.career-section-label in style.css)

@@ -585,6 +585,12 @@ async function claimCareerMission(track) {
   return (await httpsCallable(functions, "claimCareerMission")({ track })).data;
 }
 
+/** Claim a Challenges entry ('firstWin' | 'hotStreak' | 'highRoller' | 'bigWinner'). Server verifies eligibility and advances the level (except firstWin, which is one-time). */
+async function claimChallengeMission(track) {
+  await authReady;
+  return (await httpsCallable(functions, "claimChallengeMission")({ track })).data;
+}
+
 /** Spend gems to unlock a table's entry-minimum for 1hr (stackable — extends existing window). */
 async function unlockTableWithGems(tableId) {
   await authReady;
@@ -597,7 +603,7 @@ window.CloudSync = {
   claimAdReward, claimZeroBailout, claimFreeChip,
   linkWithGoogle, linkWithEmail, isAccountLinked, getAccountLabel,
   recordHandForSync, flushPendingHandSync,
-  claimMission, claimCareerMission, unlockTableWithGems,
+  claimMission, claimCareerMission, claimChallengeMission, unlockTableWithGems,
   logEvent: logAnalyticsEvent,
 };
 // game.js is a classic (non-module) script and runs BEFORE this module finishes loading,
