@@ -1,1 +1,14 @@
-
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.blackjackcasinotables.scotcha",
+      "sha256_cert_fingerprints": [
+        "B5:BE:5F:51:CC:05:CF:4A:ED:1B:BD:FF:64:FB:97:CD:E3:C6:CA:10:A9:3E:4D:BF:9D:F8:CC:02:74:16:59:C1_deployment_cert_SHA256",
+        "B5:BE:5F:51:CC:05:CF:4A:ED:1B:BD:FF:64:FB:97:CD:E3:C6:CA:10:A9:3E:4D:BF:9D:F8:CC:02:74:16:59:C1_hybrid_classical_cert_SHA256",
+        "B5:BE:5F:51:CC:05:CF:4A:ED:1B:BD:FF:64:FB:97:CD:E3:C6:CA:10:A9:3E:4D:BF:9D:F8:CC:02:74:16:59:C1_hybrid_pqc_cert_SHA256"
+      ]
+    }
+  }
+]
